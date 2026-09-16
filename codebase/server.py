@@ -17,34 +17,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import threading
 import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from agent_core import AuditLogger, SessionState, TeachBackAgent, provider_from_name
+from agent_core import AuditLogger, TeachBackAgent, provider_from_name
+from agent_graph import GraphSessionRunner
 
 
-class MemorySessionStore:
-    def __init__(self) -> None:
-        self._states: dict[str, dict[str, Any]] = {}
-        self._lock = threading.Lock()
-
-    def get(self, session_id: str) -> dict[str, Any]:
-        with self._lock:
-            return dict(self._states.get(session_id, {"session_id": session_id}))
-
-    def save(self, session_id: str, state: dict[str, Any]) -> None:
-        with self._lock:
-            self._states[session_id] = dict(state)
-
-    def reset(self, session_id: str) -> None:
-        with self._lock:
-            self._states.pop(session_id, None)
-
-
-def make_handler(agent: TeachBackAgent, sessions: MemorySessionStore):
+def make_handler(agent: TeachBackAgent, sessions: GraphSessionRunner):
     class Handler(BaseHTTPRequestHandler):
         server_version = "D3TeachBack/1.0"
 
@@ -80,11 +62,9 @@ def make_handler(agent: TeachBackAgent, sessions: MemorySessionStore):
                 payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
                 explanation = str(payload.get("student_explanation", "")).strip()
                 session_id = str(payload.get("session_id") or uuid.uuid4())
-                if payload.get("reset"):
-                    sessions.reset(session_id)
-                previous = sessions.get(session_id)
-                result = agent.run_turn(explanation, previous)
-                sessions.save(session_id, result["state"])
+                result = sessions.run_turn(
+                    explanation, session_id, reset=bool(payload.get("reset"))
+                )
                 self._json(result)
             except ValueError as exc:
                 self._json({"error": "invalid_request", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
@@ -110,7 +90,7 @@ def main() -> None:
     logger = AuditLogger()
     provider = provider_from_name(args.provider, logger=logger)
     agent = TeachBackAgent(provider=provider, logger=logger)
-    sessions = MemorySessionStore()
+    sessions = GraphSessionRunner(agent)
     server = ThreadingHTTPServer((args.host, args.port), make_handler(agent, sessions))
     print(
         f"D3 Teach-back API listening on http://{args.host}:{args.port} "

@@ -3,6 +3,7 @@
 /.tmp/
 /tmp/
 /codebase/logs/
+/codebase/state/
 __pycache__/
 *.py[cod]
 .env
