@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Phòng Teach-back · Biến (Variable) là gì?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['"Sora"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+  :root{
+    --bg: #F7F5FD;
+    --bg-grid: #EFEAFB;
+    --surface: #FFFFFF;
+    --surface-alt: #F4F1FC;
+    --border: #E6E0F7;
+    --text: #241F3D;
+    --text-muted: #756E93;
+    --text-faint: #9992B3;
+    --violet-50: #F4F1FE;
+    --violet-100: #EAE3FD;
+    --violet-300: #C4B5F7;
+    --violet-500: #8B72EE;
+    --violet-600: #7457E0;
+    --violet-700: #5F42C6;
+    --emerald-50: #ECFCF5;
+    --emerald-100: #D3F8E7;
+    --emerald-500: #2FBE86;
+    --emerald-600: #199C6B;
+    --amber-100: #FDF0D8;
+    --amber-500: #E9A23B;
+    --amber-700: #92600D;
+    --rose-100: #FCE4E6;
+    --rose-500: #E4667B;
+    --rose-700: #9C2E42;
+    --shadow-sm: 0 1px 2px rgba(46, 34, 90, 0.06);
+    --shadow-md: 0 8px 24px -8px rgba(94, 71, 190, 0.18);
+    --shadow-lg: 0 20px 48px -12px rgba(94, 71, 190, 0.28);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171329;
+      --bg-grid: #1D1836;
+      --surface: #211C3B;
+      --surface-alt: #292245;
+      --border: #362D59;
+      --text: #EEE9FB;
+      --text-muted: #B3A9D6;
+      --text-faint: #8B80AD;
+      --violet-50: #241F42;
+      --violet-100: #2C2650;
+      --violet-300: #6B5BB0;
+      --violet-600: #A794F5;
+      --violet-700: #C3B4FA;
+      --emerald-50: #14291F;
+      --emerald-100: #123F2C;
+      --emerald-600: #4ADE9A;
+      --amber-100: #3A2C10;
+      --amber-700: #F0B85C;
+      --rose-100: #3A1C22;
+      --rose-700: #F090A0;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md: 0 8px 24px -8px rgba(0,0,0,0.5);
+      --shadow-lg: 0 20px 48px -12px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #171329;
+    --bg-grid: #1D1836;
+    --surface: #211C3B;
+    --surface-alt: #292245;
+    --border: #362D59;
+    --text: #EEE9FB;
+    --text-muted: #B3A9D6;
+    --text-faint: #8B80AD;
+    --violet-50: #241F42;
+    --violet-100: #2C2650;
+    --violet-300: #6B5BB0;
+    --violet-600: #A794F5;
+    --violet-700: #C3B4FA;
+    --emerald-50: #14291F;
+    --emerald-100: #123F2C;
+    --emerald-600: #4ADE9A;
+    --amber-100: #3A2C10;
+    --amber-700: #F0B85C;
+    --rose-100: #3A1C22;
+    --rose-700: #F090A0;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 8px 24px -8px rgba(0,0,0,0.5);
+    --shadow-lg: 0 20px 48px -12px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(circle at 1px 1px, var(--bg-grid) 1px, transparent 0) 0 0/22px 22px,
+      var(--bg);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-display { font-family: 'Sora', ui-sans-serif, system-ui, sans-serif; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--violet-300); border-radius: 999px; }
+
+  :focus-visible {
+    outline: 2px solid var(--violet-500);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  .app-shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px 20px 32px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-sm);
+    padding: 16px 20px;
+  }
+  .breadcrumb {
+    font-size: 13px;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .breadcrumb .crumb-current { color: var(--violet-600); font-weight: 600; }
+
+  .understanding-track {
+    position: relative;
+    height: 14px;
+    border-radius: 999px;
+    background: var(--violet-50);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .understanding-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--violet-500), var(--emerald-500));
+    transition: width 700ms cubic-bezier(.22,1,.36,1);
+  }
+  .understanding-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 40%);
+  }
+  .badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--violet-100);
+    color: var(--violet-700, var(--violet-600));
+    transition: background 300ms ease, color 300ms ease;
+    white-space: nowrap;
+  }
+  .badge-status.is-mastered { background: var(--emerald-100); color: var(--emerald-600); }
+
+  .btn-reset {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 12px;
+    transition: transform 150ms ease, background 150ms ease, color 150ms ease;
+  }
+  .btn-reset:hover { background: var(--rose-100); color: var(--rose-700); }
+  .btn-reset:active { transform: scale(0.96); }
+  .btn-reset svg { transition: transform 400ms ease; }
+  .btn-reset:hover svg { transform: rotate(-70deg); }
+
+  /* ---------- Panels ---------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-faint);
+  }
+
+  /* Checklist */
+  .check-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    transition: background 300ms ease, border-color 300ms ease;
+  }
+  .check-item.is-done { background: var(--emerald-50); border-color: var(--emerald-100); }
+  .check-box {
+    flex: none;
+    width: 24px; height: 24px;
+    border-radius: 8px;
+    border: 2px solid var(--violet-300);
+    display: flex; align-items: center; justify-content: center;
+    color: transparent;
+    background: var(--surface);
+    transition: all 250ms cubic-bezier(.34,1.56,.64,1);
+  }
+  .check-item.is-done .check-box {
+    background: var(--emerald-500);
+    border-color: var(--emerald-500);
+    color: white;
+    transform: scale(1.08);
+  }
+  .check-item.is-done .check-box svg { animation: pop-check 400ms ease; }
+  @keyframes pop-check {
+    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+    60% { transform: scale(1.3) rotate(4deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .check-label { font-size: 13.5px; line-height: 1.45; color: var(--text); }
+  .check-item.is-done .check-label { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--emerald-500); text-decoration-thickness: 1.5px; }
+
+  /* Recovery card */
+  .recovery-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 450ms cubic-bezier(.22,1,.36,1), opacity 350ms ease, margin-top 450ms ease;
+    margin-top: 0;
+  }
+  .recovery-wrap.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin-top: 16px;
+  }
+  .recovery-inner { overflow: hidden; min-height: 0; }
+  .recovery-card {
+    border-radius: 16px;
+    border: 1px solid var(--amber-100);
+    background: var(--amber-100);
+    padding: 14px 16px 16px;
+  }
+  .recovery-snippet {
+    background: var(--surface);
+    border-left: 3px solid var(--amber-500);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text);
+    font-style: italic;
+    margin: 10px 0 12px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; font-size: 13.5px;
+    border-radius: 12px;
+    padding: 9px 14px;
+    transition: transform 150ms ease, box-shadow 200ms ease, background 150ms ease, border-color 150ms ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-amber { background: var(--amber-500); color: #4A2E05; box-shadow: var(--shadow-sm); }
+  .btn-amber:hover { box-shadow: var(--shadow-md); }
+  .btn-primary { background: var(--violet-600); color: white; box-shadow: var(--shadow-sm); }
+  .btn-primary:hover { box-shadow: var(--shadow-md); }
+  .btn-ghost { background: var(--surface-alt); color: var(--text-muted); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--violet-50); color: var(--violet-700, var(--violet-600)); border-color: var(--violet-300); }
+
+  /* Chat */
+  .persona-avatar {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(145deg, var(--violet-500), var(--violet-700));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--shadow-sm);
+    flex: none;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 999px; background: var(--emerald-500);
+    box-shadow: 0 0 0 3px var(--emerald-100);
+  }
+  .status-dot.is-typing { background: var(--amber-500); box-shadow: 0 0 0 3px var(--amber-100); animation: pulse-dot 1s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+  .chat-scroll {
+    height: 380px;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bubble-row { display: flex; }
+  .bubble-row.agent { justify-content: flex-start; }
+  .bubble-row.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.55;
+    animation: bubble-in 320ms cubic-bezier(.22,1,.36,1);
+  }
+  @keyframes bubble-in {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .bubble-row.agent .bubble {
+    background: var(--violet-50);
+    color: var(--text);
+    border: 1px solid var(--violet-100);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble-row.user .bubble {
+    background: var(--emerald-500);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .typing-bubble {
+    display: inline-flex; gap: 4px; padding: 12px 14px;
+    background: var(--violet-50); border: 1px solid var(--violet-100);
+    border-radius: 16px; border-bottom-left-radius: 4px;
+  }
+  .typing-bubble span {
+    width: 6px; height: 6px; border-radius: 999px; background: var(--violet-500);
+    animation: bounce-dot 1.2s infinite ease-in-out;
+  }
+  .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce-dot { 0%,60%,100%{ transform: translateY(0); opacity:.5;} 30%{ transform: translateY(-5px); opacity:1;} }
+
+  /* Chips */
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .chip {
+    flex: none;
+    font-size: 12.5px; font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: all 150ms ease;
+  }
+  .chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .chip:active { transform: scale(0.96); }
+  .chip-1 { border-color: var(--emerald-100); color: var(--emerald-600); background: var(--emerald-50); }
+  .chip-2 { border-color: var(--amber-100); color: var(--amber-700, #8a5a12); background: var(--amber-100); }
+  .chip-3 { border-color: var(--rose-100); color: var(--rose-700); background: var(--rose-100); }
+  .chip-4 { border-color: var(--violet-100); color: var(--violet-700, var(--violet-600)); background: var(--violet-100); }
+
+  .text-input {
+    flex: 1;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 11px 14px;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .text-input:focus { outline: none; border-color: var(--violet-500); background: var(--surface); }
+  .text-input::placeholder { color: var(--text-faint); }
+
+  .send-btn {
+    width: 42px; height: 42px; flex: none;
+    border-radius: 12px;
+    background: var(--violet-600);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 150ms ease, background 150ms ease;
+  }
+  .send-btn:hover { background: var(--violet-700, var(--violet-600)); }
+  .send-btn:active { transform: scale(0.92); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(23, 19, 41, 0.45);
+    backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 300ms ease;
+  }
+  .modal-backdrop.is-open { opacity: 1; pointer-events: auto; }
+  .modal-card {
+    background: var(--surface);
+    border-radius: 24px;
+    max-width: 420px; width: 100%;
+    padding: 28px 26px 24px;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(16px) scale(.96);
+    opacity: 0;
+    transition: transform 400ms cubic-bezier(.22,1,.36,1), opacity 350ms ease;
+  }
+  .modal-backdrop.is-open .modal-card { transform: translateY(0) scale(1); opacity: 1; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 13.5px; }
+  .stat-row:last-of-type { border-bottom: none; }
+  .stat-label { color: var(--text-muted); }
+  .stat-value { font-weight: 700; color: var(--text); text-align: right; max-width: 60%; }
+
+  /* Confetti */
+  #confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 70; overflow: hidden; }
+  .confetti-piece {
+    position: absolute; top: -20px;
+    border-radius: 2px;
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(.4,0,.6,1);
+    animation-fill-mode: forwards;
+  }
+  @keyframes confetti-fall {
+    to { transform: translateY(115vh) rotate(var(--rot, 540deg)); opacity: 0.9; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .chat-scroll { height: 320px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Header -->
+  <header class="topbar mb-5">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <div class="breadcrumb mb-2">
+          <span>Khóa học Lập trình cơ bản</span>
+          <span>›</span>
+          <span>Bài 1</span>
+          <span>›</span>
+          <span class="crumb-current">Phòng Teach-back</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="understanding-track flex-1 max-w-sm">
+            <div class="understanding-fill" id="understandingFill"></div>
+          </div>
+          <span class="font-display font-bold text-sm" id="understandingPct" style="color: var(--violet-600);">0%</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span class="badge-status" id="statusBadge">Chưa hiểu gì cả 🤔</span>
+        <button class="btn-reset" id="resetBtn" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+          Làm mới phiên
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main grid -->
+  <main class="grid grid-cols-1 lg:grid-cols-[35%_1fr] gap-5 items-start">
+
+    <!-- LEFT PANEL -->
+    <aside class="panel p-5">
+      <h2 class="panel-title mb-3">BẢNG TRI THỨC &amp; TRẠNG THÁI NGƯỜI HỌC</h2>
+      <div class="flex flex-col gap-2.5" id="checklist">
+        <div class="check-item" data-idx="0">
+          <span class="check-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span class="check-label">Khái niệm hộp chứa lưu trữ dữ liệu <em>(Memory box)</em></span>
+        </div>
+        <div class="check-item" data-idx="1">
+          <span class="check-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span class="check-label">Tên biến và Giá trị bên trong</span>
+        </div>
+        <div class="check-item" data-idx="2">
+          <span class="check-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span class="check-label">Khả năng thay đổi / cập nhật giá trị</span>
+        </div>
+      </div>
+
+      <div class="recovery-wrap" id="recoveryWrap">
+        <div class="recovery-inner">
+          <div class="recovery-card">
+            <div class="flex items-center gap-2 font-semibold text-sm" style="color: var(--amber-700, #8a5a12);">
+              <span>📖</span>
+              <span>Tài liệu ôn tập tức thì <span class="font-normal opacity-80">(Trích xuất từ Bài giảng)</span></span>
+            </div>
+            <p class="recovery-snippet">"Hãy tưởng tượng biến như chiếc hộp giày có dán nhãn 'Tuổi'. Bạn có thể cất số 20 vào đó, hôm sau đổi thành số 21."</p>
+            <button class="btn btn-amber w-full" id="recoveryDoneBtn" type="button">Tôi đã đọc xong, cho tôi thử dạy lại!</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL -->
+    <section class="panel flex flex-col overflow-hidden">
+      <div class="flex items-center gap-3 px-5 py-4 border-b" style="border-color: var(--border);">
+        <div class="persona-avatar">🧸</div>
+        <div class="min-w-0">
+          <p class="font-display font-bold text-sm leading-tight">Bé AI · Học viên tập sự</p>
+          <p class="text-xs flex items-center gap-1.5 mt-0.5" style="color: var(--text-faint);">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Đang lắng nghe</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="chat-scroll" id="chatScroll"></div>
+
+      <div class="px-5 pt-1 pb-3">
+        <p class="text-[11px] font-semibold mb-2" style="color: var(--text-faint);">KỊCH BẢN THỬ NGHIỆM NHANH</p>
+        <div class="chip-row mb-3">
+          <button class="chip chip-1" data-scenario="1" type="button">Kịch bản 1 · Tiến bộ chuẩn</button>
+          <button class="chip chip-2" data-scenario="2" type="button">Kịch bản 2 · Sai lần 1</button>
+          <button class="chip chip-3" data-scenario="3" type="button">Kịch bản 3 · Vẫn sai</button>
+          <button class="chip chip-4" data-scenario="4" type="button">Kịch bản 4 · Về đích</button>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button class="btn btn-ghost" id="recoveryBtn" type="button">🤔 Tôi không nhớ / Muốn xem lại slide</button>
+          <button class="btn btn-ghost" id="hintBtn" type="button">💡 Gợi ý cho tôi</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="text" id="textInput" class="text-input" placeholder="Giải thích cho Bé AI hiểu 'Biến' là gì..." autocomplete="off" />
+          <button class="send-btn" id="sendBtn" type="button" aria-label="Gửi">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Confetti layer -->
+<div id="confetti-layer"></div>
+
+<!-- Summary modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-card">
+    <div class="text-center mb-1">
+      <div class="text-4xl mb-2">🎉</div>
+      <h3 class="font-display font-extrabold text-lg">Hoàn thành phiên Teach-back!</h3>
+      <p class="text-sm mt-1" style="color: var(--text-muted);">Bé AI đã hiểu trọn vẹn về "Biến" rồi.</p>
+    </div>
+    <div class="mt-4">
+      <div class="stat-row"><span class="stat-label">Tổng thời gian</span><span class="stat-value" id="statTime">–</span></div>
+      <div class="stat-row"><span class="stat-label">Số lần vượt chướng ngại</span><span class="stat-value" id="statObstacles">–</span></div>
+      <div class="stat-row"><span class="stat-label">Lỗ hổng đã vượt qua</span><span class="stat-value" id="statGap">Phân biệt Nhãn biến vs Giá trị động</span></div>
+    </div>
+    <button class="btn btn-primary w-full mt-5" id="modalCloseBtn" type="button">Lưu tiến độ &amp; Kết thúc</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- State ----------
+  const initialState = () => ({
+    understanding: 0,
+    errorCount: 0,
+    sessionState: 'INIT',
+    checklist: [false, false, false],
+    startTime: Date.now(),
+    engaged: false,
+  });
+  let state = initialState();
+
+  // ---------- DOM refs ----------
+  const el = {
+    fill: document.getElementById('understandingFill'),
+    pct: document.getElementById('understandingPct'),
+    badge: document.getElementById('statusBadge'),
+    resetBtn: document.getElementById('resetBtn'),
+    checklist: document.getElementById('checklist'),
+    recoveryWrap: document.getElementById('recoveryWrap'),
+    recoveryDoneBtn: document.getElementById('recoveryDoneBtn'),
+    recoveryBtn: document.getElementById('recoveryBtn'),
+    hintBtn: document.getElementById('hintBtn'),
+    chatScroll: document.getElementById('chatScroll'),
+    statusDot: document.getElementById('statusDot'),
+    statusText: document.getElementById('statusText'),
+    textInput: document.getElementById('textInput'),
+    sendBtn: document.getElementById('sendBtn'),
+    modalBackdrop: document.getElementById('modalBackdrop'),
+    modalCloseBtn: document.getElementById('modalCloseBtn'),
+    statTime: document.getElementById('statTime'),
+    statObstacles: document.getElementById('statObstacles'),
+    statGap: document.getElementById('statGap'),
+    confettiLayer: document.getElementById('confetti-layer'),
+  };
+
+  // ---------- Render helpers ----------
+  function renderUnderstanding() {
+    el.fill.style.width = state.understanding + '%';
+    el.pct.textContent = state.understanding + '%';
+    let text = 'Chưa hiểu gì cả 🤔';
+    if (state.understanding >= 100) text = 'Đã hoàn toàn thông suốt! 🎉';
+    else if (state.understanding >= 70) text = 'Đã hiểu ví dụ chiếc hộp, nhưng chưa rõ cách thay đổi giá trị 💡';
+    else if (state.understanding >= 35) text = 'Mới nắm được tên gọi 🧐';
+    el.badge.textContent = text;
+    el.badge.classList.toggle('is-mastered', state.understanding >= 100);
+  }
+
+  function renderChecklist() {
+    [...el.checklist.children].forEach((item, i) => {
+      item.classList.toggle('is-done', !!state.checklist[i]);
+    });
+  }
+
+  function showRecoveryCard() { el.recoveryWrap.classList.add('is-open'); }
+  function hideRecoveryCard() { el.recoveryWrap.classList.remove('is-open'); }
+
+  function scrollChatToBottom() {
+    requestAnimationFrame(() => { el.chatScroll.scrollTop = el.chatScroll.scrollHeight; });
+  }
+
+  function addMessage(sender, text) {
+    const row = document.createElement('div');
+    row.className = 'bubble-row ' + sender;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    el.chatScroll.appendChild(row);
+    scrollChatToBottom();
+  }
+
+  let typingEl = null;
+  function showTyping() {
+    el.statusDot.classList.add('is-typing');
+    el.statusText.textContent = 'Đang nhập...';
+    const row = document.createElement('div');
+    row.className = 'bubble-row agent';
+    row.id = 'typingRow';
+    row.innerHTML = '<div class="typing-bubble"><span></span><span></span><span></span></div>';
+    el.chatScroll.appendChild(row);
+    scrollChatToBottom();
+    typingEl = row;
+  }
+  function hideTyping() {
+    el.statusDot.classList.remove('is-typing');
+    el.statusText.textContent = 'Đang lắng nghe';
+    if (typingEl) { typingEl.remove(); typingEl = null; }
+  }
+
+  function agentSay(text, delay) {
+    showTyping();
+    setTimeout(() => {
+      hideTyping();
+      addMessage('agent', text);
+    }, delay || 650 + Math.random() * 350);
+  }
+
+  // ---------- Flow logic ----------
+  function bumpUnderstanding(val) {
+    if (val > state.understanding) { state.understanding = val; renderUnderstanding(); }
+  }
+  function setChecklist(indices) {
+    indices.forEach(i => state.checklist[i] = true);
+    renderChecklist();
+  }
+  function engageOnce() {
+    if (!state.engaged) { state.engaged = true; bumpUnderstanding(35); }
+  }
+
+  function onScenario1() {
+    engageOnce();
+    state.sessionState = 'EVALUATE';
+    bumpUnderstanding(70);
+    setChecklist([0, 1]);
+    agentSay("À, tức là như một chiếc hộp có nhãn đúng không bạn? Thế nếu chương trình đang chạy mà mình muốn đổi số bên trong thì chiếc hộp đó biến mất hay sao?");
+  }
+
+  function onScenario2() {
+    engageOnce();
+    state.sessionState = 'SOCRATIC';
+    state.errorCount = Math.max(state.errorCount, 1);
+    agentSay("Ủa, nếu biến là một giá trị cố định không bao giờ đổi, thì sao người ta lại gọi nó là 'biến' mà không gọi là 'hằng số' nhỉ?");
+  }
+
+  function onScenario3() {
+    engageOnce();
+    state.sessionState = 'HINT';
+    state.errorCount = Math.min(Math.max(state.errorCount + 1, 2), 3);
+    agentSay("Bạn nhớ lại ví dụ chiếc hộp dán nhãn xem, nhãn tên và thứ chứa bên trong khác nhau thế nào?");
+  }
+
+  function onScenario4() {
+    engageOnce();
+    state.sessionState = 'MASTERED';
+    bumpUnderstanding(100);
+    setChecklist([0, 1, 2]);
+    agentSay("A ha! Mình hiểu rồi! Biến là chiếc hộp có tên cố định ở ngoài, nhưng giá trị bên trong thì đổi thoải mái trong lúc chạy!", 700);
+    setTimeout(() => { fireConfetti(); showSummaryModal(); }, 1650);
+  }
+
+  function onRecoveryRequest() {
+    state.sessionState = 'RECOVERY';
+    showRecoveryCard();
+    agentSay("Không sao đâu! Bạn xem lại đoạn trích bên cạnh rồi dạy lại cho mình câu này nhé: 'Chiếc hộp biến dùng để làm gì?'");
+  }
+
+  function onRecoveryDone() {
+    hideRecoveryCard();
+    state.sessionState = 'EVALUATE';
+    el.textInput.focus();
+    agentSay("Rồi, giờ bạn thử giải thích lại cho mình nghe xem nào! 😊");
+  }
+
+  function onHintRequest() {
+    agentSay("Gợi ý nhỏ nè: tại sao người ta gọi nó là 'biến' chứ không phải 'hằng'? Nó có thay đổi được không? 🤔");
+  }
+
+  function classifyText(raw) {
+    const t = raw.toLowerCase();
+    const hasBox = /(hộp|hop|ngăn chứa|ngan chua|container)/.test(t);
+    const hasLabelValue = /(tên|ten|nhãn|nhan|giá trị|gia tri)/.test(t);
+    const hasChange = /(thay đổi|thay doi|cập nhật|cap nhat|đổi được|doi duoc|biến đổi|bien doi)/.test(t);
+    if (hasBox && hasLabelValue && hasChange) return 'complete';
+    if (hasBox) return 'partial';
+    return 'wrong';
+  }
+
+  function handleSend() {
+    const text = el.textInput.value.trim();
+    if (!text) return;
+    addMessage('user', text);
+    el.textInput.value = '';
+
+    const cls = classifyText(text);
+    if (cls === 'complete') {
+      onScenario4();
+    } else if (cls === 'partial') {
+      if (state.understanding < 70) {
+        onScenario1();
+      } else {
+        engageOnce();
+        agentSay("Gần đúng rồi! Nhưng bạn chưa nói rõ giá trị bên trong có thay đổi được không khi chương trình đang chạy đó 🧐");
+      }
+    } else {
+      if (state.errorCount === 0) onScenario2();
+      else onScenario3();
+    }
+  }
+
+  // ---------- Confetti ----------
+  function fireConfetti() {
+    const colors = ['#8B72EE', '#2FBE86', '#E9A23B', '#C4B5F7', '#34D399'];
+    const count = 90;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const size = 6 + Math.random() * 6;
+      piece.style.width = size + 'px';
+      piece.style.height = (size * (0.4 + Math.random() * 0.8)) + 'px';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.setProperty('--rot', (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 540) + 'deg');
+      const duration = 2600 + Math.random() * 1800;
+      piece.style.animationDuration = duration + 'ms';
+      piece.style.animationDelay = (Math.random() * 400) + 'ms';
+      el.confettiLayer.appendChild(piece);
+      setTimeout(() => piece.remove(), duration + 500);
+    }
+  }
+
+  // ---------- Summary modal ----------
+  function formatElapsed(ms) {
+    const totalSec = Math.max(1, Math.round(ms / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return m + 'm ' + String(s).padStart(2, '0') + 's';
+  }
+
+  function showSummaryModal() {
+    el.statTime.textContent = formatElapsed(Date.now() - state.startTime);
+    el.statObstacles.textContent = Math.max(state.errorCount, 0) + (state.errorCount === 1 ? ' lần' : ' lần');
+    el.modalBackdrop.classList.add('is-open');
+  }
+  function hideSummaryModal() { el.modalBackdrop.classList.remove('is-open'); }
+
+  // ---------- Reset ----------
+  function resetSession() {
+    state = initialState();
+    el.chatScroll.innerHTML = '';
+    hideRecoveryCard();
+    hideSummaryModal();
+    renderUnderstanding();
+    renderChecklist();
+    hideTyping();
+    boot();
+  }
+
+  function boot() {
+    agentSay("Chào bạn, mình mới học lập trình mà chưa hiểu 'Biến' (Variable) là gì. Bạn giải thích giúp mình với?", 500);
+  }
+
+  // ---------- Wire up events ----------
+  el.sendBtn.addEventListener('click', handleSend);
+  el.textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
+
+  document.querySelectorAll('[data-scenario]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const n = btn.getAttribute('data-scenario');
+      const demoTexts = {
+        '1': "Nó giống như một chiếc hộp có dán nhãn để đựng đồ vậy đó!",
+        '2': "Biến là một giá trị cố định không bao giờ thay đổi ạ.",
+        '3': "Con vẫn nghĩ nó là một con số cố định thôi ạ.",
+        '4': "Biến là chiếc hộp có tên (nhãn) cố định, bên trong chứa giá trị có thể thay đổi hoặc cập nhật được trong lúc chương trình đang chạy."
+      };
+      addMessage('user', demoTexts[n]);
+      if (n === '1') onScenario1();
+      if (n === '2') onScenario2();
+      if (n === '3') onScenario3();
+      if (n === '4') onScenario4();
+    });
+  });
+
+  el.recoveryBtn.addEventListener('click', onRecoveryRequest);
+  el.recoveryDoneBtn.addEventListener('click', onRecoveryDone);
+  el.hintBtn.addEventListener('click', onHintRequest);
+  el.resetBtn.addEventListener('click', resetSession);
+  el.modalCloseBtn.addEventListener('click', hideSummaryModal);
+  el.modalBackdrop.addEventListener('click', (e) => { if (e.target === el.modalBackdrop) hideSummaryModal(); });
+
+  // ---------- Init ----------
+  renderUnderstanding();
+  renderChecklist();
+  boot();
+})();
+</script>
+</body>
+</html>
