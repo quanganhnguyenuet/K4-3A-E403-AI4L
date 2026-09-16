@@ -121,8 +121,8 @@ def normalize_text(value: str) -> str:
 
 POINT_SIGNAL_PATTERNS: dict[str, tuple[str, ...]] = {
     "K1": (
-        r"(doan|du doan|chon).{0,30}(token|tu|manh chu).{0,30}(xac suat|tiep theo|ke tiep)",
-        r"(token|tu|manh chu).{0,30}(xac suat|tiep theo|ke tiep)",
+        r"(doan|du doan|\bchon\b).{0,30}(token|\btu\b|manh chu).{0,30}(xac suat|tiep theo|ke tiep)",
+        r"(token|\btu\b|manh chu).{0,30}(xac suat|tiep theo|ke tiep)",
         r"phan bo xac suat.{0,20}token",
         r"sinh van ban.{0,25}pattern",
     ),
@@ -140,7 +140,7 @@ POINT_SIGNAL_PATTERNS: dict[str, tuple[str, ...]] = {
         r"(internet|nguon).{0,25}(sai|thien lech|thieu)",
         r"knowledge cutoff",
         r"ngay cutoff",
-        r"(su kien|thong tin).{0,20}(moi|sau cutoff)",
+        r"(su kien|thong tin).{0,8}(\bmoi\b|sau cutoff)",
         r"context.{0,35}(huu han|khong nam|thieu|gioi han)",
         r"khong nam trong context",
         r"sau ngay.{0,15}(cutoff|do)",
@@ -148,7 +148,7 @@ POINT_SIGNAL_PATTERNS: dict[str, tuple[str, ...]] = {
     ),
     "K4": (
         r"(rag|tool).{0,45}(nguon|tai lieu|du lieu|kiem chung)",
-        r"(tra nguon|trich dan|citation|kiem chung)",
+        r"(?<!khong tu )(tra nguon|trich dan|citation|kiem chung)",
         r"them dung tai lieu",
         r"dua them nguon",
         r"khong co can cu.{0,20}khong biet",
@@ -161,13 +161,13 @@ MISCONCEPTION_PATTERNS: dict[str, tuple[str, ...]] = {
         r"(database|co so du lieu).{0,30}(loi|hong).{0,30}(bia|sai)",
     ),
     "M2": (
-        r"(co tinh|co y).{0,35}(noi doi|lua|tra loi sai)",
+        r"(co tinh|co y).{0,35}(noi doi|\blua\b|tra loi sai)",
         r"biet.{0,25}(dap an|cau).{0,20}(dung|sai).{0,35}(noi doi|tra loi sai)",
         r"noi doi.{0,30}(to ra|thong minh|lua)",
     ),
     "M3": (
-        r"temperature.{0,20}(0|zero).{0,45}(khong bao gio|luon dung|het hallucination|khong bia)",
-        r"(khong bao gio|luon dung|het hallucination).{0,45}temperature.{0,20}(0|zero)",
+        r"temperature.{0,20}(0|zero).{0,45}(khong bao gio|\bluon\b dung|het hallucination|khong bia)",
+        r"(khong bao gio|\bluon\b dung|het hallucination).{0,45}temperature.{0,20}(0|zero)",
     ),
     "M4": (
         r"rag.{0,50}(100%|chinh xac 100|het hallucination|khong the bia|khong bia)",
@@ -176,16 +176,16 @@ MISCONCEPTION_PATTERNS: dict[str, tuple[str, ...]] = {
     "M5": (
         r"hallucination.{0,20}chi.{0,45}(cutoff|thong tin moi)",
         r"chi.{0,45}(cutoff|thong tin moi).{0,45}(hallucination|bia)",
-        r"(kien thuc|thong tin).{0,15}cu.{0,20}luon dung",
+        r"(kien thuc|thong tin).{0,15}\bcu\b.{0,20}\bluon\b dung",
     ),
     "M6": (
-        r"context.{0,20}cang dai.{0,50}(chac chan|luon|khong bia|chinh xac)",
-        r"(chac chan|luon).{0,35}(chinh xac|khong bia).{0,35}context",
+        r"context.{0,20}cang dai.{0,50}(chac chan|\bluon\b|khong bia|chinh xac)",
+        r"(chac chan|\bluon\b).{0,35}(chinh xac|khong bia).{0,35}context",
     ),
 }
 
 DOMAIN_PATTERNS = (
-    r"\b(llm|ai|model|token|rag|hallucination|cutoff|context|temperature)\b",
+    r"\b(llm|model|token|rag|hallucination|cutoff|context|temperature)\b",
     r"\b(bia|doan|du doan|xac suat|kiem chung|tra nguon|trich dan)\b",
 )
 
@@ -229,7 +229,16 @@ def looks_insufficient(value: str) -> bool:
 
 def looks_out_of_scope(value: str) -> bool:
     text = normalize_text(value)
-    return not looks_insufficient(value) and not matches_any(text, DOMAIN_PATTERNS)
+    # "AI" written in full caps is the acronym (the lesson's own subject); the
+    # lowercase Vietnamese pronoun "ai" ("who") is checked case-sensitively on
+    # the raw text so it isn't confused with the domain keyword after
+    # normalize_text lowercases everything.
+    has_ai_acronym = re.search(r"\bAI\b", value) is not None
+    return (
+        not looks_insufficient(value)
+        and not has_ai_acronym
+        and not matches_any(text, DOMAIN_PATTERNS)
+    )
 
 
 class AuditLogger:
@@ -378,6 +387,14 @@ class SessionState:
         )
 
 
+QUESTION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {"question": {"type": "string"}},
+    "required": ["question"],
+}
+
+
 class AssessmentProvider(Protocol):
     name: str
 
@@ -387,6 +404,17 @@ class AssessmentProvider(Protocol):
         prompt: str,
         explanation: str,
         schema: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]: ...
+
+    def draft_question(
+        self,
+        *,
+        target_gap: str | None,
+        action: str,
+        misconception: str | None,
+        rubric_excerpt: dict[str, Any],
+        feedback: str | None,
         metadata: dict[str, Any],
     ) -> dict[str, Any]: ...
 
@@ -428,29 +456,25 @@ class OpenAIResponsesProvider:
             raise RuntimeError("Responses API returned no output_text")
         return "\n".join(texts)
 
-    def assess(
+    def _request_structured(
         self,
         *,
-        prompt: str,
-        explanation: str,
+        instructions: str,
+        input_text: str,
         schema: dict[str, Any],
-        metadata: dict[str, Any],
+        schema_name: str,
+        component: str,
+        session_id: str,
     ) -> dict[str, Any]:
         request_id = str(uuid.uuid4())
         body = {
             "model": self.model,
-            "instructions": (
-                "You are the semantic assessor inside a bounded Vietnamese Teach-back Agent. "
-                "Evaluate only against the supplied rubric and the learner's exact words. "
-                "A missing idea is not a misconception. Every reported misconception must "
-                "include a direct evidence span from the learner input. Do not invent citations. "
-                "A different wording is correct when its meaning matches the rubric."
-            ),
-            "input": prompt,
+            "instructions": instructions,
+            "input": input_text,
             "text": {
                 "format": {
                     "type": "json_schema",
-                    "name": "teachback_assessment",
+                    "name": schema_name,
                     "strict": True,
                     "schema": schema,
                 }
@@ -458,8 +482,8 @@ class OpenAIResponsesProvider:
             "max_output_tokens": 1200,
             "store": False,
             "metadata": {
-                "component": "d3_teachback_assessor",
-                "session_id": str(metadata.get("session_id", "unknown"))[:64],
+                "component": component,
+                "session_id": str(session_id)[:64],
             },
         }
         self.logger.write(
@@ -468,7 +492,7 @@ class OpenAIResponsesProvider:
                 "request_id": request_id,
                 "provider": self.name,
                 "model": self.model,
-                "prompt": prompt,
+                "prompt": input_text,
                 "request_body": body,
             },
         )
@@ -523,6 +547,70 @@ class OpenAIResponsesProvider:
             return json.loads(output_text)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"Model output is not valid JSON: {output_text[:500]}") from exc
+
+    def assess(
+        self,
+        *,
+        prompt: str,
+        explanation: str,
+        schema: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._request_structured(
+            instructions=(
+                "You are the semantic assessor inside a bounded Vietnamese Teach-back Agent. "
+                "Evaluate only against the supplied rubric and the learner's exact words. "
+                "A missing idea is not a misconception. Every reported misconception must "
+                "include a direct evidence span from the learner input. Do not invent citations. "
+                "A different wording is correct when its meaning matches the rubric."
+            ),
+            input_text=prompt,
+            schema=schema,
+            schema_name="teachback_assessment",
+            component="d3_teachback_assessor",
+            session_id=metadata.get("session_id", "unknown"),
+        )
+
+    def draft_question(
+        self,
+        *,
+        target_gap: str | None,
+        action: str,
+        misconception: str | None,
+        rubric_excerpt: dict[str, Any],
+        feedback: str | None,
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        context_lines = [
+            f"lesson_topic: {rubric_excerpt.get('task', '')}",
+            f"target_knowledge_gap: {target_gap or 'none'}",
+            f"target_gap_ground_truth: {rubric_excerpt.get('ground_truth', '')}",
+            f"target_gap_accepted_signals: {rubric_excerpt.get('accepted_signals', [])}",
+            f"next_action: {action}",
+            f"active_misconception: {misconception or 'none'}",
+            f"active_misconception_claim: {rubric_excerpt.get('misconception_claim', '')}",
+        ]
+        if feedback:
+            context_lines.append(
+                f"previous_question_was_rejected_because: {feedback}. "
+                "Draft a different question that fixes this exact problem."
+            )
+        payload = self._request_structured(
+            instructions=(
+                "You draft exactly one short Vietnamese Socratic question for a bounded "
+                "Teach-back Agent about why LLMs can hallucinate. Only ask about the lesson "
+                "topic and the stated target knowledge gap or misconception below — never "
+                "ask about an unrelated subject. Ask at most one question, and never reveal "
+                "the full answer, list all four knowledge points, or dump the correct answer "
+                "in the question text."
+            ),
+            input_text="\n".join(context_lines),
+            schema=QUESTION_SCHEMA,
+            schema_name="teachback_question",
+            component="d3_teachback_question_drafter",
+            session_id=metadata.get("session_id", "unknown"),
+        )
+        return {"draft_question": str(payload.get("question", "")).strip()}
 
 
 class OfflineRuleProvider:
@@ -647,6 +735,18 @@ class OfflineRuleProvider:
         )
         return result
 
+    def draft_question(
+        self,
+        *,
+        target_gap: str | None,
+        action: str,
+        misconception: str | None,
+        rubric_excerpt: dict[str, Any],
+        feedback: str | None,
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {"draft_question": ""}
+
 
 def provider_from_name(name: str = "auto", logger: AuditLogger | None = None) -> AssessmentProvider:
     normalized = name.lower().strip()
@@ -669,6 +769,12 @@ class TeachBackAgent:
         self.provider = provider
         self.knowledge = knowledge or KnowledgeBase()
         self.logger = logger or AuditLogger()
+        # Deferred import: agent_graph imports from this module at load time,
+        # so importing it back at module scope here would create a cycle.
+        # By the time __init__ runs, agent_core has already finished loading.
+        from agent_graph import build_graph
+
+        self._graph = build_graph(self).compile()
 
     def _build_prompt(self, explanation: str, state: SessionState) -> str:
         payload = {
@@ -832,6 +938,25 @@ class TeachBackAgent:
         )
         return not any(marker in normalized for marker in answer_dump_markers)
 
+    @staticmethod
+    def _question_rejection_reason(question: str) -> str:
+        if not question:
+            return "câu hỏi rỗng"
+        if len(question) > 300:
+            return "câu hỏi quá dài (trên 300 ký tự)"
+        if question.count("?") != 1:
+            return "phải có đúng một dấu hỏi chấm"
+        normalized = normalize_text(question)
+        answer_dump_markers = (
+            "dap an day du la",
+            "bon y gom",
+            "cau tra loi dung la",
+        )
+        for marker in answer_dump_markers:
+            if marker in normalized:
+                return "câu hỏi đang tiết lộ trực tiếp đáp án"
+        return "câu hỏi không hợp lệ"
+
     def run_turn(
         self,
         explanation: str,
@@ -844,196 +969,6 @@ class TeachBackAgent:
             if isinstance(previous_state, SessionState)
             else SessionState.from_dict(previous_state)
         )
-        state.turn += 1
-        prompt = self._build_prompt(explanation.strip(), state)
-        raw = self.provider.assess(
-            prompt=prompt,
-            explanation=explanation.strip(),
-            schema=ASSESSMENT_SCHEMA,
-            metadata={
-                "session_id": state.session_id,
-                "turn": state.turn,
-                "awaiting_transfer": state.awaiting_transfer,
-            },
-        )
-        assessment = self._validate_assessment(raw, explanation.strip())
-
-        explicit_points = detect_explicit_points(explanation)
-        assessment["harness_supported_points"] = sorted(explicit_points)
-        deterministic_insufficient = looks_insufficient(explanation)
-        deterministic_out_of_scope = looks_out_of_scope(explanation)
-        if deterministic_out_of_scope:
-            assessment["out_of_scope"] = True
-            assessment["insufficient_input"] = False
-        elif deterministic_insufficient:
-            assessment["out_of_scope"] = False
-            assessment["insufficient_input"] = True
-        assessment["copied_source"] = bool(
-            assessment["copied_source"] or self.knowledge.is_probable_copy(explanation)
-        )
-
-        normalized_explanation = normalize_text(explanation)
-        has_example_marker = matches_any(
-            normalized_explanation,
-            (r"\bvi du\b", r"\bchang han\b", r"\bgiong nhu\b"),
-        )
-        if (
-            state.awaiting_transfer
-            and has_example_marker
-            and "K2" in explicit_points
-            and bool(explicit_points & {"K3", "K4"})
-            and not assessment["misconceptions"]
-        ):
-            assessment["transfer_passed"] = True
-
-        verdict_by_point = {
-            row["point_id"]: row["verdict"] for row in assessment["point_assessments"]
-        }
-        current_supported = {
-            point_id for point_id, verdict in verdict_by_point.items() if verdict == "supported"
-        } | explicit_points
-        covered = set(state.covered_points) | current_supported
-
-        unresolved = set(state.unresolved_misconceptions)
-        for previous_misconception in list(unresolved):
-            conflicts = set(
-                self.knowledge.misconceptions[previous_misconception].get("conflicts_with", [])
-            )
-            if conflicts and conflicts <= current_supported:
-                unresolved.remove(previous_misconception)
-        unresolved.update(assessment["misconceptions"])
-        for misconception in unresolved:
-            for conflict in self.knowledge.misconceptions[misconception].get("conflicts_with", []):
-                covered.discard(conflict)
-
-        required = self.knowledge.required_point_ids
-        missing = [point_id for point_id in required if point_id not in covered]
-        first_misconception = next(iter(sorted(unresolved)), None)
-        if missing or unresolved:
-            state.mastery_complete = False
-            state.transfer_passed = False
-            state.awaiting_transfer = False
-
-        if assessment["out_of_scope"]:
-            status = "out_of_scope"
-            action = "OUT_OF_SCOPE"
-            target_gap = None
-        elif assessment["copied_source"]:
-            status = "copied_source"
-            action = "ASK_REPHRASE"
-            target_gap = assessment["recommended_gap"] or "K2"
-        elif unresolved:
-            status = "misconception"
-            action = "SOCRATIC_CORRECTION"
-            target_gap = self.knowledge.misconception_gap(first_misconception or "M1")
-        elif assessment["insufficient_input"]:
-            status = "needs_recovery"
-            action = "SHOW_RECOVERY"
-            target_gap = assessment["recommended_gap"] or (missing[0] if missing else "K1")
-        elif not missing:
-            status = "mastered"
-            target_gap = "K2"
-            if state.awaiting_transfer and assessment["transfer_passed"]:
-                action = "COMPLETE_SESSION"
-                state.transfer_passed = True
-                state.mastery_complete = True
-                state.awaiting_transfer = False
-            else:
-                action = "ASK_TRANSFER"
-                state.awaiting_transfer = True
-        else:
-            status = "partial"
-            proposed_gap = assessment["recommended_gap"]
-            target_gap = proposed_gap if proposed_gap in missing else missing[0]
-            attempts = state.attempts_by_gap.get(target_gap, 0) + 1
-            state.attempts_by_gap[target_gap] = attempts
-            if attempts >= 2:
-                action = "SHOW_RECOVERY"
-            elif target_gap == "K1":
-                action = "ASK_MECHANISM"
-            elif target_gap in {"K2", "K3"}:
-                action = "ASK_CAUSE"
-            else:
-                action = "ASK_MITIGATION"
-
-        retrieval: dict[str, Any] | None = None
-        tool_trace: list[dict[str, Any]] = []
-        if target_gap:
-            retrieval = self.knowledge.retrieve_evidence(target_gap)
-            tool_trace.append(
-                {
-                    "tool": "retrieve_evidence",
-                    "input": {"knowledge_point_id": target_gap},
-                    "output_source_ids": [row["id"] for row in retrieval["sources"]],
-                }
-            )
-
-        draft = assessment["draft_question"]
-        agent_response = (
-            draft
-            if action not in {"SHOW_RECOVERY", "COMPLETE_SESSION"}
-            and self._question_is_safe(draft)
-            else self._fallback_question(action, target_gap, first_misconception)
-        )
-        recovery_card = None
-        if action == "SHOW_RECOVERY" and retrieval:
-            recovery_card = retrieval.get("recovery_card")
-
-        evidence_source_ids = (
-            [row["id"] for row in retrieval["sources"][:2]] if retrieval else []
-        )
-        retrieved_source_ids = {
-            row["id"] for row in retrieval["sources"]
-        } if retrieval else set()
-        citations_valid = set(evidence_source_ids) <= retrieved_source_ids
-
-        state.covered_points = [point_id for point_id in POINT_PRIORITY if point_id in covered]
-        state.unresolved_misconceptions = sorted(unresolved)
-        base_progress = sum(POINT_WEIGHTS[point] for point in state.covered_points)
-        if state.mastery_complete:
-            progress = 100
-        elif not missing and not unresolved:
-            progress = 90
-        else:
-            progress = min(base_progress, 70 if unresolved else 85)
-
-        tool_trace.append(
-            {
-                "tool": "save_learner_state",
-                "input": {"session_id": state.session_id},
-                "output": asdict(state),
-            }
-        )
-        result = {
-            "session_id": state.session_id,
-            "turn": state.turn,
-            "provider": self.provider.name,
-            "status": status,
-            "mastery_complete": state.mastery_complete,
-            "progress": progress,
-            "covered_points": state.covered_points,
-            "missing_points": missing,
-            "misconceptions": state.unresolved_misconceptions,
-            "next_action": action,
-            "target_gap": target_gap,
-            "agent_response": agent_response,
-            "evidence_source_ids": evidence_source_ids,
-            "citations_valid": citations_valid,
-            "source_cards": retrieval["sources"] if retrieval else [],
-            "recovery_card": recovery_card,
-            "confidence": assessment["confidence"],
-            "state": asdict(state),
-            "tool_trace": tool_trace,
-            "raw_assessment": assessment,
-        }
-        self.logger.write(
-            "agent_decision",
-            {
-                "session_id": state.session_id,
-                "turn": state.turn,
-                "provider": self.provider.name,
-                "student_explanation": explanation,
-                "decision": result,
-            },
-        )
-        return result
+        input_state = {"explanation": explanation.strip(), **asdict(state)}
+        output = self._graph.invoke(input_state)
+        return output["result"]

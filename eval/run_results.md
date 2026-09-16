@@ -1,18 +1,18 @@
 # D3 - Kết quả chạy golden set
 
-- Thời điểm UTC: `2026-09-16T18:43:29.714246+00:00`
+- Thời điểm UTC: `2026-09-16T20:16:14.962785+00:00`
 - Dataset version: `1.1`
 - Provider: `openai`
 - Tổng số ca: **20**
-- Đạt: **20**
-- Không đạt: **0**
-- Tỷ lệ đạt: **100.0%**
+- Đạt: **18**
+- Không đạt: **2**
+- Tỷ lệ đạt: **90.0%**
 
 ## Kết quả theo taxonomy
 
 | Lớp | Đạt | Tổng | Tỷ lệ |
 |---|---:|---:|---:|
-| L1_INPUT | 5 | 5 | 100.0% |
+| L1_INPUT | 3 | 5 | 60.0% |
 | L2_SEMANTIC | 5 | 5 | 100.0% |
 | L3_GROUNDING | 5 | 5 | 100.0% |
 | L4_DIALOGUE | 5 | 5 | 100.0% |
@@ -37,14 +37,20 @@
 | D3-014 | L3_GROUNDING | Đạt | misconception | SOCRATIC_CORRECTION | no | - |
 | D3-015 | L1_INPUT | Đạt | needs_recovery | SHOW_RECOVERY | no | - |
 | D3-016 | L1_INPUT | Đạt | out_of_scope | OUT_OF_SCOPE | no | - |
-| D3-017 | L1_INPUT | Đạt | needs_recovery | SHOW_RECOVERY | no | - |
-| D3-018 | L1_INPUT | Đạt | copied_source | ASK_REPHRASE | no | - |
+| D3-017 | L1_INPUT | Không đạt | needs_recovery | SHOW_RECOVERY | no | covered_points, missing_points |
+| D3-018 | L1_INPUT | Không đạt | copied_source | ASK_REPHRASE | no | covered_points, missing_points |
 | D3-019 | L1_INPUT | Đạt | mastered | ASK_TRANSFER | no | - |
 | D3-020 | L4_DIALOGUE | Đạt | misconception | SOCRATIC_CORRECTION | no | - |
 
 ## Phân tích sai lệch
 
-Không có sai lệch trên lượt chạy này.
+- **covered_points: 2 ca.** Nhận diện semantic coverage K1-K4 chưa chính xác.
+- **missing_points: 2 ca.** Knowledge gap suy ra chưa khớp ground truth.
+
+### Case cần xem lại
+
+- `D3-017`: expected status/action `needs_recovery/SHOW_RECOVERY`, actual `needs_recovery/SHOW_RECOVERY`; sai ở covered_points, missing_points.
+- `D3-018`: expected status/action `copied_source/ASK_REPHRASE`, actual `copied_source/ASK_REPHRASE`; sai ở covered_points, missing_points.
 
 ## Quality bar đề xuất
 
