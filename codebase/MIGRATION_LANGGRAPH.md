@@ -179,3 +179,91 @@ POST /api/teach
   tại, ghi nhận làm rủi ro còn lại của `normalize_text`.
 - `GraphSessionRunner` dùng 1 connection SQLite + 1 lock toàn cục — đủ cho
   quy mô demo hackathon, chưa tối ưu cho tải cao/nhiều tiến trình.
+
+## Hướng dẫn xây UI theo chức năng dự án
+
+`server.py` chỉ expose `POST /api/teach` — chưa có UI thật nối vào backend.
+`teach-back-prototype.html` ở repo root là **mock rời, không gọi API**, minh
+hoạ cho một chủ đề khác ("Biến (Variable) là gì?"), nhưng style/component đã
+được thiết kế sẵn (progress bar, checklist, chat bubble, recovery card, modal
+kết thúc) — nên **tái dùng cấu trúc/style đó**, chỉ đổi nội dung/mapping dữ
+liệu sang domain "Vì sao LLM có thể bịa" theo đúng field mà backend trả về.
+
+### Luồng dữ liệu
+
+1. UI gửi `POST /api/teach` với `{ session_id, student_explanation, reset? }`.
+2. Trong lúc chờ phản hồi (có thể vài giây nếu `--provider openai` vì mỗi
+   lượt gọi tối đa 2 lời gọi model: `assess` + `draft_question`), hiện trạng
+   thái "đang gõ" (tái dùng `.typing-bubble` có sẵn trong prototype).
+3. Nhận JSON kết quả, cập nhật toàn bộ UI theo bảng mapping bên dưới, rồi
+   append `agent_response` như một bubble từ agent.
+4. `session_id` phải được UI tự sinh (uuid) và giữ nguyên trong suốt phiên
+   (localStorage/sessionStorage phía client) để backend tiếp tục đúng session
+   qua SQLite checkpoint.
+
+### Mapping field response → UI component
+
+| Field trong response | Hiển thị ở đâu | Ghi chú |
+|---|---|---|
+| `progress` (0-100) | Thanh tiến độ (`.understanding-fill` + `%` text) | Không phải điểm thi — giữ đúng tinh thần `mastery_policy.purpose` ("Luyện tập, không phải điểm thi") khi viết copy UI. |
+| `covered_points` (list K1-K4) | Checklist 4 mục, tick theo `knowledge_points[].label` trong `knowledge/d3-llm-hallucination-ground-truth.json` (K1 "Cơ chế sinh xác suất", K2 "Hợp lý không đồng nghĩa đúng", K3 "Nguồn gây thiếu hoặc sai căn cứ", K4 "Giảm rủi ro, không bảo đảm tuyệt đối") | Prototype cũ có 3 checklist item (`ui_checklist` UI1-UI3 trong ground-truth JSON gộp K3+K4 làm 1 dòng "Nêu được một nguồn rủi ro và một cách giảm rủi ro") — có thể dùng đúng 3 dòng `ui_checklist` thay vì 4 K-point riêng để giữ UI gọn như bản mock cũ. |
+| `status` | Badge trạng thái (`#statusBadge`) | Map text: `mastered`→"Đang tổng kết", `partial`→"Đang học", `misconception`→"Cần sửa hiểu lầm", `needs_recovery`→"Cần xem lại gợi ý", `copied_source`→"Hãy diễn đạt lại", `out_of_scope`→"Ngoài chủ đề". |
+| `next_action` | Quyết định UI phụ (có hiện recovery card không, có khoá input không...) | Xem bảng hành động bên dưới. |
+| `agent_response` | Bubble chat phía agent (`.bubble-row.agent`) | Đây là **câu hỏi Socratic duy nhất mỗi lượt** — không tự thêm câu hỏi phụ ở UI, đúng nguyên tắc `agent_policy.must` ("Hỏi tối đa một câu mỗi lượt"). |
+| `student_explanation` (input UI vừa gửi) | Bubble chat phía user (`.bubble-row.user`) | Tự thêm ở client ngay khi submit, không cần đợi response. |
+| `misconceptions` (list M1-M6) | Banner cảnh báo nhỏ phía trên chat khi khác rỗng | Không hiện điểm số kèm theo — tránh cảm giác "chấm điểm" (`agent_policy.must_not`). |
+| `recovery_card` | `.recovery-card` (chỉ hiện khi `next_action=SHOW_RECOVERY` và field khác `null`) | Nội dung lấy từ `recovery_card.text`; không tự chế thêm nội dung ngoài field này. |
+| `source_cards` | Danh sách nguồn dạng chip/tooltip nhỏ dưới `recovery_card` hoặc dưới bubble agent (tuỳ thiết kế) | Mỗi item có `id/type/page hoặc segment/paraphrase` — dùng để trả lời "thông tin nằm ở đâu" theo đúng mục đích ghi trong `codebase/README.md`. |
+| `citations_valid` | Không cần hiển thị trực tiếp cho học viên; dùng cho panel debug/QA nội bộ nếu có | Giá trị `false` gần như không nên xảy ra (harness đã validate) — nếu UI có chế độ debug, cảnh báo đỏ khi gặp `false`. |
+| `mastery_complete` + `next_action=COMPLETE_SESSION` | Trigger modal kết thúc phiên (`#modalBackdrop`) | Chỉ true sau khi vượt transfer — copy modal nên nhấn "bạn đã dạy đủ 4 ý + qua được ví dụ chuyển giao", không dùng chữ "điểm tuyệt đối". |
+| `session_limit_reached` (field mới, chỉ có khi vượt `MAX_TURNS_PER_SESSION`) | Banner nhẹ nhàng gợi ý tạm dừng, **không phải lỗi** | Khi field này `true`, khoá nút gửi và chỉ còn nút "Bắt đầu lại" (gọi lại API với `reset: true`). |
+| `confidence` | Không cần hiển thị cho học viên | Nội bộ/debug; agent không được tự gán % hiểu (`spec.md`: "LLM không được tự gán phần trăm") — field này chỉ là độ tin cậy của bước chấm, không phải % hiểu bài. |
+| `tool_trace`, `raw_assessment` | Không hiển thị trong UI học viên | Dữ liệu debug/audit; nếu cần panel dev, để ẩn sau một toggle riêng, không lẫn vào luồng học chính. |
+
+### Hành động (`next_action`) → hành vi UI
+
+| `next_action` | UI nên làm gì |
+|---|---|
+| `ASK_MECHANISM` / `ASK_CAUSE` / `ASK_MITIGATION` / `ASK_EXAMPLE` / `ASK_TRANSFER` | Hiện câu hỏi (`agent_response`) như bình thường, input mở để học viên trả lời tiếp. |
+| `SOCRATIC_CORRECTION` | Giống trên nhưng có thể tô nhẹ màu cảnh báo (amber) cho bubble, vì đang sửa hiểu lầm — không dùng màu đỏ/rose để tránh cảm giác bị "bắt lỗi". |
+| `ASK_REPHRASE` | Hiện gợi ý nhỏ "hãy diễn đạt lại bằng lời của bạn" cạnh input (trường hợp `copied_source`). |
+| `SHOW_RECOVERY` | Mở `.recovery-wrap` (đã có sẵn animation trong prototype), khoá tạm nút gửi câu hỏi tiếp cho đến khi học viên bấm "Tôi đã đọc xong, thử dạy lại". |
+| `OUT_OF_SCOPE` | Bubble nhắc quay lại chủ đề; không tick/untick checklist. |
+| `COMPLETE_SESSION` | Trigger modal kết thúc + hiệu ứng confetti (đã có `#confetti-layer` trong prototype). |
+
+### Nút phụ nên có (dựa theo `allowed_actions` và mock cũ)
+
+- **"Tôi không nhớ / xem lại gợi ý"** (giống `#recoveryBtn` trong mock) — gửi
+  một `student_explanation` rỗng/ngắn hợp lệ hoặc field riêng để chủ động xin
+  `SHOW_RECOVERY` mà không cần đợi trả lời sai; nếu muốn giữ contract hiện
+  tại đơn giản, có thể map nút này thành gửi câu trả lời dạng "Không biết"
+  (backend đã nhận diện qua `INSUFFICIENT_PATTERNS`).
+- **"Bắt đầu lại"** — gọi lại API với `reset: true`, xoá luôn state UI phía
+  client (progress, checklist, chat).
+- Không cần nút "hint" tách riêng khỏi flow — agent đã tự quyết định
+  `ASK_*` phù hợp mỗi lượt theo đúng nguyên tắc "Hỏi tối đa một câu mỗi lượt,
+  nhắm vào khoảng trống quan trọng nhất" (`agent_policy.must`).
+
+### Việc KHÔNG nên làm trong UI
+
+- Không tự tính lại % hiểu ở client — luôn dùng `progress` từ server.
+- Không hiển thị số phần trăm gắn với từng câu trả lời như một bài kiểm tra
+  có điểm (`mastery_policy.purpose`: "Luyện tập, không phải điểm thi").
+- Không lộ `raw_assessment`/nội dung K1-K4 đầy đủ cho học viên trước khi họ
+  tự nói ra — đó là dữ liệu chấm nội bộ, không phải đáp án để hiển thị.
+- Không gọi thẳng `codebase/knowledge/...json` từ frontend để "gợi ý trước"
+  câu trả lời — phá vỡ mục đích teach-back (học viên dạy lại agent, không
+  phải đọc đáp án).
+
+### Test UI thủ công sau khi build
+
+1. Chạy `codebase/server.py --provider offline` để test UI không tốn API
+   call, dùng script curl mẫu trong phần "Chạy server" ở trên làm tham chiếu
+   field response.
+2. Đi qua đủ 4 nhánh trạng thái: `partial` nhiều lượt → `mastered` →
+   `COMPLETE_SESSION`; một lượt chứa misconception (vd nhắc "temperature
+   bằng 0") để xem banner cảnh báo; một lượt input rỗng ("Không biết") để
+   xem `recovery_card`; một câu hoàn toàn ngoài chủ đề để xem `OUT_OF_SCOPE`.
+3. Bấm "Bắt đầu lại" (`reset: true`) và xác nhận UI với state trở về sạch.
+4. Đổi sang `--provider openai` (cần `OPENAI_API_KEY`) để xem UI xử lý đúng
+   độ trễ thật của 1-2 lời gọi model mỗi lượt.
