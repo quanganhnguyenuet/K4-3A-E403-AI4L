@@ -2,3 +2,9 @@
 /topic.md
 /.tmp/
 /tmp/
+/codebase/logs/
+__pycache__/
+*.py[cod]
+.env
+.venv/
+.venv

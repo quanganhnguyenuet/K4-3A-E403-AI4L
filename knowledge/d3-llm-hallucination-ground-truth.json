@@ -167,7 +167,7 @@
     {
       "id": "K4",
       "label": "Giảm rủi ro, không bảo đảm tuyệt đối",
-      "required": false,
+      "required": true,
       "ground_truth": "RAG, tools, context phù hợp, trích dẫn và kiểm chứng có thể giảm hallucination nhưng không tạo bảo đảm đúng tuyệt đối; temperature thấp chủ yếu làm đầu ra ổn định hơn.",
       "accepted_signals": [
         "dùng RAG hoặc tool để lấy nguồn",
@@ -276,6 +276,7 @@
     "allowed_actions": [
       "ASK_MECHANISM",
       "ASK_CAUSE",
+      "ASK_MITIGATION",
       "ASK_EXAMPLE",
       "SOCRATIC_CORRECTION",
       "ASK_REPHRASE",

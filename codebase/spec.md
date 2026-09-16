@@ -35,15 +35,33 @@ Loại: [ ] Tối ưu tính năng có sẵn  [ ] Tính năng mới
 
 ## §5. Kiểu lỗi — 4 lớp chỗ khó + kịch bản (≥8) [bảng theo guide §2.5]
 
+| Lớp | Chỗ khó | Kịch bản đại diện | Hành vi an toàn |
+|---|---|---|---|
+| L1_INPUT | Đầu vào quá ngắn | "Không biết" / "Bịa là bịa" | Hiện recovery card, không tự suy ra misconception |
+| L1_INPUT | Ngoài phạm vi | Học viên nói về video hoặc đường truyền | Đưa về đúng câu hỏi, không chấm kiến thức |
+| L1_INPUT | Sao chép nguồn | Dán gần nguyên văn slide | Yêu cầu diễn đạt lại và đưa ví dụ riêng |
+| L2_SEMANTIC | Đúng nhưng khác chữ | "Bàn phím gợi ý mạnh hơn" | Chấm theo nghĩa, không exact keyword |
+| L2_SEMANTIC | Đúng một phần | Chỉ giải thích dự đoán token | Ghi nhận K1 và hỏi đúng gap tiếp theo |
+| L3_GROUNDING | Nhầm nguyên nhân | Bỏ sót cutoff/context/dữ liệu lệch | Retrieve nguồn gắn với knowledge gap |
+| L3_GROUNDING | Nguồn không khớp | Citation thuộc bài nhưng không hỗ trợ claim | Chỉ dẫn nguồn nằm trong retrieval result |
+| L4_DIALOGUE | Hiểu sai tự tin | "RAG chính xác 100%" | Socratic correction; không complete |
+| L4_DIALOGUE | Regression | Đã hiểu rồi nhưng lượt sau phát biểu M6 | Thu hồi K3/K4 đang xung đột |
+| L4_DIALOGUE | Dừng quá sớm | Đủ K1-K4 nhưng chưa có transfer example | Giữ 90%; chỉ complete sau transfer pass |
+
 ## §6. Bốn đường đi của trải nghiệm
 - Happy path: · Low-confidence (②): · Failure/không căn cứ (①): · Correction (user sửa):
 - Khi bị đòi ngoài phạm vi (③): · Case đặc thù domain (④):
 
 ## §7. Kiểm thử
-- Chiều chất lượng + định nghĩa kiểm chứng được:
-- Golden set (≥20 case theo cơ cấu trong guide §2.6, file trong eval/):
-- Quality bar (chốt từ hạn chốt spec của khoá, giữ nguyên sau đó): "Đạt khi ≥ ___% qua bộ, và ___"
-- Kết quả các lượt chạy (bảng % — cập nhật đến trước CP6):
+- Chiều chất lượng: status, K1-K4 coverage, misconception, next action, evidence hit, citation validity, answer leak và mastery stop condition.
+- Golden set: `eval/golden_set.json`, đúng 20 case; 5 case cho mỗi lớp L1-L4; có multi-turn, regression và `COMPLETE_SESSION`.
+- Quality bar: **đạt khi ≥80% case qua toàn bộ checks, 0 false-mastered trên case misconception, 100% citation hợp lệ và không complete trước transfer pass.**
+- Kết quả các lượt chạy:
+
+| Dataset | Provider | Đạt | Ghi chú |
+|---|---|---:|---|
+| v1.0 | OpenAI | 10/20 (50%) | Baseline thật, lưu tại `eval/run_results_openai_v1.md` |
+| v1.1 | Offline rules | 20/20 (100%) | Chỉ xác minh harness; phải chạy lại OpenAI trước demo |
 
 ## §8. Phân công & kế hoạch
 - Phân công có tên: spec / evidence / prompt / code / demo
@@ -52,4 +70,8 @@ Loại: [ ] Tối ưu tính năng có sẵn  [ ] Tính năng mới
 
 ## §9. Changelog
 | Thời điểm | Đổi gì | Vì sao (trỏ về feedback/case nào) |
+|---|---|---|
+| 17/09 | Bắt buộc evidence cho misconception; thêm semantic guard K1-K4 | V1 sai ở D3-002, 003, 005, 007, 008, 019, 020 |
+| 17/09 | Tách out-of-scope và insufficient; thêm copy detector | V1 sai ở D3-016, 017, 018 |
+| 17/09 | Thêm multi-turn transfer pass và regression | Golden v1.0 chưa kiểm tra điều kiện hoàn thành phiên |
 ```

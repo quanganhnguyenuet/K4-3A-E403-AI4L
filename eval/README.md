@@ -6,7 +6,9 @@ Một học viên dạy lại cho agent: **“Vì sao LLM có thể bịa (hallu
 
 Ground truth: `../knowledge/d3-llm-hallucination-ground-truth.json`.
 
-Golden set: `d3-golden-set.jsonl` gồm 20 cách trả lời, phủ các hard test của D3:
+Golden set chính và duy nhất được runner sử dụng: `golden_set.json`, gồm 20 cách trả lời được gắn taxonomy 4 lớp. Version 1.1 có cả trạng thái nhiều lượt, regression và ca đạt `COMPLETE_SESSION`. File `d3-golden-set.jsonl` là bản nháp lịch sử, không được dùng để chấm và có thể có nhãn cũ.
+
+Kết quả OpenAI v1.0 được giữ ở `run_results_openai_v1.md` và `results_openai_v1.jsonl` để so sánh trước-sau. `run_results.md` luôn là lượt chạy gần nhất của dataset hiện hành; kiểm tra trường `Provider` trước khi dùng con số trong demo.
 
 - đúng nhưng diễn đạt khác tài liệu;
 - đúng một phần;
@@ -40,7 +42,7 @@ Output phải tuân theo `response_contract` trong ground truth. Ví dụ:
 {
   "status": "partial",
   "covered_points": ["K1"],
-  "missing_points": ["K2", "K3"],
+  "missing_points": ["K2", "K3", "K4"],
   "misconceptions": [],
   "next_action": "ASK_CAUSE",
   "agent_response": "Nếu model chọn phần tiếp theo nghe hợp lý, điều gì khiến phần đó vẫn có thể sai sự thật?",
