@@ -267,3 +267,136 @@ liệu sang domain "Vì sao LLM có thể bịa" theo đúng field mà backend t
 3. Bấm "Bắt đầu lại" (`reset: true`) và xác nhận UI với state trở về sạch.
 4. Đổi sang `--provider openai` (cần `OPENAI_API_KEY`) để xem UI xử lý đúng
    độ trễ thật của 1-2 lời gọi model mỗi lượt.
+
+## Checklist đối chiếu CP3 (còn thiếu trước khi nộp)
+
+Rà lại toàn bộ yêu cầu CP3 ("Xây dựng prototype AI thật và đo lường kiểm thử
+sơ bộ") so với trạng thái repo hiện tại (nhánh `tung`, commit `c68cf73`).
+Mục đích của phần này là **liệt kê rõ việc còn thiếu**, không tự ý sửa code/
+data/git — các quyết định (thêm ca golden set, merge main, nộp video...) để
+bạn hoặc leader nhóm chủ động thực hiện.
+
+### 1. Đã đạt (có bằng chứng cụ thể)
+
+| Yêu cầu CP3 | Bằng chứng |
+|---|---|
+| Module quyết định trung tâm gọi AI thật, không gán cứng | `codebase/agent_core.py` → `OpenAIResponsesProvider` gọi thật OpenAI Responses API qua `urllib`; đã verify sống bằng API key thật (golden set 20/20 rồi 18/20 tuỳ lượt chạy — xem mục "Đã verify" ở trên). |
+| Logging prompt + raw response của model | `AuditLogger` ghi `model_prompt`/`model_raw_response` vào `codebase/logs/model_calls.jsonl` (bị gitignore — cần đính kèm log mẫu khi nộp nếu ban tổ chức muốn xem bằng chứng kỹ thuật, vì thư mục này không lên repo công khai). |
+| `eval/golden_set.json` đủ 20 ca, có script chạy hàng loạt | `codebase/run_eval.py --provider openai/offline`, output `eval/results.jsonl` + `eval/run_results.md`. |
+| `eval/run_results.md` có bảng đạt/không đạt/tỷ lệ % | Có, kèm bảng theo taxonomy và bảng chi tiết 20 ca. |
+| Giữ dấu vết lượt chạy đầu tiên, không "làm đẹp" số liệu | `eval/run_results_openai_v1.md` giữ nguyên kết quả thật đầu tiên **10/20 (50%)**, không bị ghi đè bởi các lượt sau — đúng tinh thần CP3: "kết quả 12/20 nhưng phân tích sâu vẫn nhận trọn điểm". |
+
+### 2. Còn thiếu / cần quyết định
+
+**a) Golden set thiếu ca lớp "③ Ngoài phạm vi/thẩm quyền" (mới có 1/2 tối thiểu)**
+
+CP3 yêu cầu tối thiểu 2 ca cho mỗi lớp trong 4 lớp (① Nguồn sự thật,
+② Mơ hồ/thiếu thông tin, ③ Ngoài phạm vi/thẩm quyền, ④ Đặc thù nghiệp vụ).
+Taxonomy nội bộ dự án (`L1_INPUT/L2_SEMANTIC/L3_GROUNDING/L4_DIALOGUE`, xem
+`spec.md` mục §5) ánh xạ gần đúng như sau:
+
+| Taxonomy CP3 | Taxonomy dự án | Số ca hiện có | Đạt tối thiểu 2? |
+|---|---|---:|---|
+| ① Nguồn sự thật | `L3_GROUNDING` (D3-003, 004, 007, 008, 014) | 5 | ✅ |
+| ② Mơ hồ/thiếu thông tin | `L1_INPUT` — nhánh insufficient (D3-015 "Không biết", D3-017 "Bịa là bịa thôi ạ") | 2 | ✅ (vừa đủ) |
+| ③ Ngoài phạm vi/thẩm quyền | `L1_INPUT` — nhánh out_of_scope (**chỉ D3-016** "Em thích học bằng video hơn...") | **1** | ❌ chưa đủ |
+| ④ Đặc thù nghiệp vụ | `L4_DIALOGUE` (D3-010, 011, 012, 013, 020 — misconception, regression, transfer) | 5 | ✅ |
+
+D3-018 (copied_source) và D3-019 (tiếng Việt không dấu) là 2 ca L1_INPUT còn
+lại, không thuộc nhóm ③ — chúng là edge case khác (sao chép nguồn / lỗi
+chính tả đầu vào), không tính vào "ngoài phạm vi".
+
+**Đề xuất case mới để bù (chưa thêm vào `golden_set.json`, chỉ nháp ở đây):**
+
+```json
+{
+  "id": "D3-021",
+  "taxonomy_layer": "L1_INPUT",
+  "input": "Cô ơi hôm nay lớp mình học xong sớm không ạ, em muốn về sớm.",
+  "expected_status": "out_of_scope",
+  "expected_covered": [],
+  "expected_missing": ["K1", "K2", "K3", "K4"],
+  "expected_misconceptions": [],
+  "expected_action": "OUT_OF_SCOPE",
+  "required_evidence_any": []
+}
+```
+Nếu thêm ca này, `run_eval.py`'s `validate_dataset()` sẽ cần cập nhật ràng
+buộc "đúng 20 ca / đúng 5 ca mỗi lớp" (hiện `validate_dataset` ép cứng
+`len(cases) != 20` và `layer_counts[layer] != 5` — xem `run_eval.py`) — tức
+là phải **thay** một ca L1_INPUT hiện có bằng ca out-of-scope mới, không
+phải thêm thành 21 ca, trừ khi cũng sửa lại hai ràng buộc cứng đó.
+
+**b) Chưa xác minh được "≥10 ca trích trực tiếp từ dữ liệu/hội thoại thật"**
+
+`data/slides/`, `data/transcript/` bị `.gitignore` (đúng luật bảo mật của
+ban tổ chức), nên không thể đối chiếu từ repo. `eval/golden_set.json` có
+trường `required_evidence_any` trỏ tới `source_ids` thật (vd `D1-S11`,
+`T06-136`) trong `knowledge/d3-llm-hallucination-ground-truth.json`, nhưng
+đó là nguồn để **chấm điểm**, không chứng minh nội dung `input` (câu trả lời
+mô phỏng của "học viên") được trích trực tiếp từ hội thoại/khảo sát thật.
+→ **Cần leader/nhóm tự xác nhận và ghi chú rõ** bao nhiêu trong 20 ca thực
+sự lấy từ dữ liệu mining thật (vd phỏng vấn, khảo sát) vs. tự viết mô phỏng,
+để tránh vi phạm nguyên tắc trung thực nếu bị hỏi trực tiếp.
+
+**c) Phần "Phân tích sai lệch" trong `eval/run_results.md` còn hời hợt**
+
+Bản hiện tại (18/20, provider openai, lượt gần nhất) chỉ có giải thích tự
+động chung chung:
+> "covered_points: 2 ca. Nhận diện semantic coverage K1-K4 chưa chính xác."
+> "missing_points: 2 ca. Knowledge gap suy ra chưa khớp ground truth."
+
+**Nguyên nhân gốc rễ thực tế** (rút ra khi debug 2 ca fail D3-017/D3-018
+trong phiên làm việc này, nên chép/diễn giải lại vào `run_results.md` hoặc
+báo cáo CP3 nếu muốn phần phân tích đạt độ sâu CP3 yêu cầu):
+
+- **D3-017** (`"Bịa là bịa thôi ạ."`, expected `covered_points=[]`): model
+  gpt-4o-mini tự đánh giá thêm `K2 = supported` dù input gần như không có
+  nội dung để chấm — `status`/`next_action` (`needs_recovery`/
+  `SHOW_RECOVERY`) vẫn đúng, chỉ verdict K-point của model bị "hào phóng"
+  hơn kỳ vọng.
+- **D3-018** (đoạn mô tả cơ chế K1 — token/phân bố xác suất/vòng lặp tự hồi
+  quy — expected `covered_points=["K1"]`): model tự đánh giá thêm
+  `K3 = supported`, nhiều khả năng vì input có nhắc từ "ngữ cảnh" một lần
+  (thuộc câu mô tả K1) và model liên tưởng sang khái niệm K3 (context
+  window/cutoff) dù ý gốc không nói về giới hạn ngữ cảnh. `status`/
+  `next_action` (`copied_source`/`ASK_REPHRASE`) vẫn đúng.
+- **Cả hai đều là model call variance** (gpt-4o-mini không cố định
+  temperature/seed), không phải lỗi harness/regex/graph — harness đã đúng
+  chức năng validate evidence (`_evidence_is_grounded`) chỉ chặn được
+  misconception bịa bằng chứng, chưa chặn được model gán "supported" quá
+  tay cho một K-point khi có 1 từ khoá liên quan xuất hiện tình cờ trong
+  câu. Đây là giới hạn đã biết của kiến trúc "model đề xuất, harness kiểm
+  chứng bằng-chứng-trực-tiếp" — siết thêm sẽ cần thêm điều kiện ngữ nghĩa
+  chặt hơn ở `_validate_assessment`, chưa làm trong đợt này.
+- `spec.md` đã ghi nhận baseline OpenAI từng dao động 50%→100% giữa các lần
+  chạy khác nhau trước đây — biến thiên 90%↔100% ở đợt này nằm trong cùng
+  loại rủi ro đã biết, không phải regression từ việc migrate LangGraph.
+
+**d) `git push origin main` chưa thực hiện**
+
+Toàn bộ code (bao gồm LangGraph migration + fix bug) đang nằm trên nhánh
+`tung`, đã push lên `origin/tung`. Nhánh `main` vẫn ở commit `4163742`
+("add gitignore + data") — **chưa có code/eval mới nhất**. Lệnh CP3 yêu cầu
+push thẳng `main`:
+```bash
+git add codebase/ eval/
+git commit -m "feat: integrate live AI call and document run 1 eval results"
+git push origin main
+```
+Cần leader xác nhận cách merge mong muốn trước khi chạy (merge `tung` vào
+`main` trực tiếp, hay qua Pull Request để review trước) — đây là hành động
+ảnh hưởng nhánh chính nên không tự ý thực hiện.
+
+**e) Video 30s + nộp form CP3**
+
+Chưa thể xác minh từ repo. Cần quay màn hình thao tác thật: nhập câu trả
+lời → gửi request → nhận `agent_response` từ model thật theo thời gian
+thực (không cắt ghép), rồi đội trưởng nộp qua form CP3 trước **16:00
+17/9** kèm số đo lượt đầu.
+
+**f) Deadline**
+
+CP3 hạn **16:00 17/9**; CP4 (khoá spec) hạn **21:00 17/9** cùng ngày (theo
+`README.md`). Cần tự kiểm tra đồng hồ hiện tại — đây là hạn gấp, hai mốc
+cách nhau chỉ 5 tiếng.
