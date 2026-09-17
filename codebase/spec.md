@@ -267,7 +267,7 @@ pass_rate = (số case đạt đủ điều kiện ở bước 3 quy trình ch�
 | Evidence (§1-§2, JTBD, số liệu) | *(Vũ Quốc Bảo)* | Phỏng vấn/khảo sát nhóm target, ghi log nguyên văn |
 | Prompt / rubric knowledge | *(Nguyễn Vũ Quang Anh)* | Chạy lại `run_eval_risk.py --provider openai` trên `golden_set_v1.json`, đối chiếu §7 |
 | Code (backend, agent_core, server) | *(Nguyễn Vũ Quang Anh,Mai Phan Anh Tùng)* | Chạy `python -m unittest discover -s codebase/tests -v` trước khi commit |
-| Demo / pitch | *(Vũ Quốc Bảo)* | Diễn tập demo end-to-end trên UI thật (`server.py --port 8000`) trước giờ pitch |
+| Demo / pitch | *(Vũ Quốc Bảo, Nguyễn Vũ Quang Anh)* | Diễn tập demo end-to-end trên UI thật (`server.py --port 8000`) trước giờ pitch |
 
 **Willing users**:Vũ Đức Minh,Nguyễn Ngọc Vĩnh,thời điểm hẹn test:Vào buổi demo 
 
