@@ -22,14 +22,14 @@ Workflow hiện tại của học viên VLearn gồm 2 phần nối tiếp nhau:
 
 Vấn đề cốt lõi của workflow này: bước phát hiện sai sót luôn diễn ra **sau** khi đã rời khỏi bài học (làm bài tập, đi thi, bị hỏi) — không có bước nào xảy ra **ngay lúc** vừa học xong để bắt lỗi sớm.
 
-Khảo sát n=18 (câu "Lần gần nhất học xong bài trên VLearn, bạn đã kiểm tra hiểu bài bằng cách nào?") xác nhận đúng chu trình thụ động này đang chiếm đa số:
-- 50% (9/18) làm quiz/bài tập tuần có sẵn — vẫn thuộc nhánh "phát hiện trễ", chấm đúng/sai theo lựa chọn, không bắt buộc diễn giải bằng lời.
-- 38,9% (7/18) dùng tính năng hỏi-đáp của AI Tutor có sẵn — chỉ khi họ chủ động nghĩ ra câu để hỏi.
-- 38,9% (7/18) tự tóm tắt lại bằng sơ đồ/ghi chép cá nhân — chính là bước "Note/Ghi chép" trong chu trình thụ động, tự đánh giá lấy, không có phản hồi từ bên ngoài.
-- 22,2% (4/18) thảo luận/hỏi đáp với bạn bè hoặc trợ giảng — phụ thuộc có người rảnh để hỏi.
-- 16,7% (3/18) không kiểm tra gì cả, học xong là chuyển bài tiếp — đúng vòng lặp thụ động thuần túy.
+Khảo sát n=20 (câu "Lần gần nhất học xong bài trên VLearn, bạn đã kiểm tra hiểu bài bằng cách nào?") xác nhận đúng chu trình thụ động này đang chiếm đa số:
+- 50% (10/20) làm quiz/bài tập tuần có sẵn — vẫn thuộc nhánh "phát hiện trễ", chấm đúng/sai theo lựa chọn, không bắt buộc diễn giải bằng lời.
+- 40% (8/20) dùng tính năng hỏi-đáp của AI Tutor có sẵn — chỉ khi họ chủ động nghĩ ra câu để hỏi.
+- 35% (7/20) tự tóm tắt lại bằng sơ đồ/ghi chép cá nhân — chính là bước "Note/Ghi chép" trong chu trình thụ động, tự đánh giá lấy, không có phản hồi từ bên ngoài.
+- 25% (5/20) thảo luận/hỏi đáp với bạn bè hoặc trợ giảng — phụ thuộc có người rảnh để hỏi.
+- 20% (4/20) không kiểm tra gì cả, học xong là chuyển bài tiếp — đúng vòng lặp thụ động thuần túy.
 
-Điểm chung: dù dùng cách nào trong 5 cách trên, **83,3% (15/18) vẫn từng rơi vào tình huống hiểu lúc xem nhưng không giải thích lại được** (xem Evidence bên dưới) — khớp với sơ đồ: workflow hiện tại không có bước nào chủ động bắt lỗi ngay lúc học, nên hiểu-sai-tự-tin chỉ lộ ra khi đã quá muộn.
+Điểm chung: dù dùng cách nào trong 5 cách trên, **85% (17/20) vẫn từng rơi vào tình huống hiểu lúc xem nhưng không giải thích lại được** (xem Evidence bên dưới) — khớp với sơ đồ: workflow hiện tại không có bước nào chủ động bắt lỗi ngay lúc học, nên hiểu-sai-tự-tin chỉ lộ ra khi đã quá muộn.
 
 **Core JTBD**
 > "Khi tôi vừa học một khái niệm kỹ thuật mới, tôi muốn biết chắc mình đang hiểu đúng hay đang tự tin nhầm, để tôi sửa ngay trước khi hiểu sai đó lan sang phần sau hoặc lộ ra lúc thi/áp dụng."
@@ -38,14 +38,14 @@ Khảo sát n=18 (câu "Lần gần nhất học xong bài trên VLearn, bạn �
 Người học không có cách nào rẻ và nhanh để tự kiểm tra độ hiểu của mình ngay sau khi học — cách duy nhất hiện có (làm bài kiểm tra, hỏi giảng viên/bạn) đến quá muộn hoặc quá tốn công, nên các hiểu sai nhỏ tích tụ mà không ai phát hiện sớm.
 
 **Evidence** *(khảo sát Google Form nội bộ nhóm target VLearn)*
-- Số liệu khảo sát: **n = 18** phản hồi có timestamp (16-17/09/2026), mẫu convenience — chưa đại diện toàn bộ học viên VLearn, cần mở rộng cỡ mẫu sau CP4.
-- **83,3%** (15/18) xác nhận đã từng rơi vào tình huống "xem bài giảng thấy hiểu, nhưng đến khi giải thích lại hoặc làm bài mới nhận ra chưa nắm chắc" → xác nhận trực tiếp core problem ở JTBD.
+- Số liệu khảo sát: **n = 20** phản hồi có timestamp (16-17/09/2026), mẫu convenience — chưa đại diện toàn bộ học viên VLearn, cần mở rộng cỡ mẫu sau CP4.
+- **85%** (17/20) xác nhận đã từng rơi vào tình huống "xem bài giảng thấy hiểu, nhưng đến khi giải thích lại hoặc làm bài mới nhận ra chưa nắm chắc" → xác nhận trực tiếp core problem ở JTBD.
 - Tín hiệu hỗ trợ thêm từ khảo sát:
-  - 100% (18/18) sẵn sàng dành 3-5 phút sau mỗi bài để "dạy lại cho AI" (55,6% chắc chắn dùng, 44,4% có thể thử, 0% không có nhu cầu) → khả thi về mặt willingness.
-  - 50% (9/18) hiện chỉ kiểm tra hiểu bài bằng quiz có sẵn, 38,9% (7/18) dùng AI Tutor hỏi đáp, 38,9% (7/18) tự tóm tắt/ghi chép, 16,7% (3/18) không kiểm tra gì cả sau khi học xong → xác nhận thiếu một bước tự-kiểm-tra chủ động, đúng problem statement (đa số vẫn dựa vào cách kiểm tra bị động).
-  - 55,6% (10/18) muốn AI "hỏi vặn vào chỗ nói sơ sài" thay vì tóm tắt hộ (38,9% chọn tóm tắt+ví dụ, 5,6% chọn AI tự đưa tình huống sai để bắt sửa) → ủng hộ hướng Socratic correction đang chọn ở §4/§6, tuy không phải áp đảo tuyệt đối.
-  - 55,6% (10/18) xem "tự phát hiện lỗ hổng kiến thức tưởng đã biết" là kết quả đáng giá nhất của việc dạy lại cho AI (so với 38,9% chọn rèn luyện diễn đạt, 27,8% chọn điểm quiz cải thiện) → đúng trọng tâm phát hiện misconception, không phải chấm điểm.
-- ⚠️ **Tự khai báo — điểm evidence từng mâu thuẫn với thiết kế ban đầu:** 77,8% (14/18) trả lời "Có" muốn AI cung cấp ngay đáp án chuẩn mực khi họ giải thích sai hoặc bí ý tưởng, chỉ 22,2% (4/18) chọn "Không". Thiết kế Socratic ban đầu (không tiết lộ đáp án) đi ngược majority này. Đã xử lý ở §4 bằng luồng leo thang 3 bậc theo sơ đồ app (`Socratic Question` → thu hẹp câu hỏi → `Controlled Hint` → `Knowledge Recovery`) — giữ Socratic ở 2 bậc đầu (đúng nhóm thiểu số muốn tự nghĩ) nhưng cuối cùng vẫn đưa học viên tới tài liệu gốc + câu hỏi đơn giản khi thực sự bí (đúng đa số còn lại). **Luồng leo thang này chưa được cài vào code, mới ở mức spec.**
+  - 100% (20/20) sẵn sàng dành 3-5 phút sau mỗi bài để "dạy lại cho AI" (60% chắc chắn dùng, 40% có thể thử, 0% không có nhu cầu) → khả thi về mặt willingness.
+  - 50% (10/20) hiện chỉ kiểm tra hiểu bài bằng quiz có sẵn, 40% (8/20) dùng AI Tutor hỏi đáp, 35% (7/20) tự tóm tắt/ghi chép, 20% (4/20) không kiểm tra gì cả sau khi học xong → xác nhận thiếu một bước tự-kiểm-tra chủ động, đúng problem statement (đa số vẫn dựa vào cách kiểm tra bị động).
+  - 55% (11/20) muốn AI "hỏi vặn vào chỗ nói sơ sài" thay vì tóm tắt hộ (35% chọn tóm tắt+ví dụ, 10% chọn AI tự đưa tình huống sai để bắt sửa) → ủng hộ hướng Socratic correction đang chọn ở §4/§6, tuy không phải áp đảo tuyệt đối.
+  - 60% (12/20) xem "tự phát hiện lỗ hổng kiến thức tưởng đã biết" là kết quả đáng giá nhất của việc dạy lại cho AI (so với 45% chọn rèn luyện diễn đạt, 30% chọn điểm quiz cải thiện) → đúng trọng tâm phát hiện misconception, không phải chấm điểm.
+- ⚠️ **Tự khai báo — điểm evidence từng mâu thuẫn với thiết kế ban đầu:** 80% (16/20) trả lời "Có" muốn AI cung cấp ngay đáp án chuẩn mực khi họ giải thích sai hoặc bí ý tưởng, chỉ 20% (4/20) chọn "Không". Thiết kế Socratic ban đầu (không tiết lộ đáp án) đi ngược majority này. Đã xử lý ở §4 bằng luồng leo thang 3 bậc theo sơ đồ app (`Socratic Question` → thu hẹp câu hỏi → `Controlled Hint` → `Knowledge Recovery`) — giữ Socratic ở 2 bậc đầu (đúng nhóm thiểu số muốn tự nghĩ) nhưng cuối cùng vẫn đưa học viên tới tài liệu gốc + câu hỏi đơn giản khi thực sự bí (đúng đa số còn lại). **Luồng leo thang này chưa được cài vào code, mới ở mức spec.**
 - Quote nguyên văn + nguồn:
   1. "Lúc đọc slide thì mình thấy hiểu rồi, nhưng mà bảo mình tự nói lại thì có mấy chỗ mình không biết giải thích sao." — *Nguyễn Thị Trinh*
   2. "Nhiều lúc mình cũng muốn kể lại bài vừa học cho ai đó nghe, mà học một mình thì chẳng có ai để nói cùng." — *Vũ Đức Minh*
@@ -57,15 +57,15 @@ Người học không có cách nào rẻ và nhanh để tự kiểm tra độ 
 
 ## §2. Impact & quyết định chọn
 
-> Số liệu dưới lấy từ khảo sát n=18 ở §1 (mẫu nhỏ, convenience sample — không phải thống kê đại diện toàn bộ VLearn).
+> Số liệu dưới lấy từ khảo sát n=20 ở §1 (mẫu nhỏ, convenience sample — không phải thống kê đại diện toàn bộ VLearn).
 
 **Bảng impact ứng viên**
 
 | Ứng viên | Bao nhiêu người bị ảnh hưởng | Tần suất | Tốn gì mỗi lần | Khả thi kỹ thuật |
 |---|---|---|---|---|
-| **A. Teach-back** — dạy lại cho agent, agent chấm rubric K1-K4 | 15/18 (83,3%) từng gặp đúng vấn đề "hiểu lúc xem, không giải thích lại được"; 18/18 (100%) sẵn sàng thử dạy lại cho AI | Sau mỗi buổi học khái niệm mới | Vài phút hội thoại; rủi ro chất lượng nếu agent chấm sai | Cao — đã có prototype chạy được (`agent_core.py`) |
-| **B. Quiz trắc nghiệm** tự động theo bài học | 9/18 (50%) hiện đã tự kiểm tra bằng quiz có sẵn — nhưng đây chính là cách hiện tại chưa giải quyết được vấn đề (vẫn 83,3% từng bị hiểu-sai-tự-tin dù có quiz) | Cuối mỗi bài học | Nhanh nhưng không phát hiện hiểu-sai-tự-tin (chỉ chọn đáp án) | Cao nhưng ít giá trị chẩn đoán |
-| **C. Chatbot hỏi-đáp tự do** — học viên hỏi, agent trả lời | 7/18 (38,9%) hiện có dùng AI Tutor hỏi-đáp, nhưng không giải quyết được nhóm 83,3% bị hiểu-sai-tự-tin (họ không biết để mà hỏi) | Không đều, tùy học viên chủ động | Rẻ để build nhưng không chủ động phát hiện hiểu sai | Trung bình — dễ build nhưng lệch mục tiêu |
+| **A. Teach-back** — dạy lại cho agent, agent chấm rubric K1-K4 | 17/20 (85%) từng gặp đúng vấn đề "hiểu lúc xem, không giải thích lại được"; 20/20 (100%) sẵn sàng thử dạy lại cho AI | Sau mỗi buổi học khái niệm mới | Vài phút hội thoại; rủi ro chất lượng nếu agent chấm sai | Cao — đã có prototype chạy được (`agent_core.py`) |
+| **B. Quiz trắc nghiệm** tự động theo bài học | 10/20 (50%) hiện đã tự kiểm tra bằng quiz có sẵn — nhưng đây chính là cách hiện tại chưa giải quyết được vấn đề (vẫn 85% từng bị hiểu-sai-tự-tin dù có quiz) | Cuối mỗi bài học | Nhanh nhưng không phát hiện hiểu-sai-tự-tin (chỉ chọn đáp án) | Cao nhưng ít giá trị chẩn đoán |
+| **C. Chatbot hỏi-đáp tự do** — học viên hỏi, agent trả lời | 8/20 (40%) hiện có dùng AI Tutor hỏi-đáp, nhưng không giải quyết được nhóm 85% bị hiểu-sai-tự-tin (họ không biết để mà hỏi) | Không đều, tùy học viên chủ động | Rẻ để build nhưng không chủ động phát hiện hiểu sai | Trung bình — dễ build nhưng lệch mục tiêu |
 
 **Ứng viên đã loại + vì sao**
 - **B (Quiz trắc nghiệm)**: chỉ đo được đúng/sai, không buộc học viên diễn giải bằng lời nên không phát hiện được hiểu-sai-tự-tin — đúng vấn đề cốt lõi nhóm muốn giải.
@@ -104,7 +104,7 @@ Học viên dạy lại một khái niệm kỹ thuật (ví dụ "vì sao LLM c
 
 **Mức prototype:** [x] Working
 Phần thật: toàn bộ backend `learning_platform.py` / `server.py` / `agent_core.py` chạy được, có UI thật phục vụ tại `http://127.0.0.1:8000`, có 2 runtime provider (Offline rules / OpenAI realtime).
-Phần mock: *(nhóm tự khai nếu còn phần nào giả lập)*
+Phần mock: `teach-back-prototype.html` ở gốc repo — mock tĩnh (HTML/Tailwind CDN, không gọi API thật), minh hoạ chủ đề khác ("Biến (Variable) là gì?", không phải D3/LLM hallucination). Đây là bản dựng style/component tham khảo từ giai đoạn trước (progress bar, checklist, chat bubble, recovery card, modal kết thúc — xem `MIGRATION_LANGGRAPH.md`), **không nằm trong luồng chạy thật** của Teach-back Studio hiện tại (`ui/index.html` mới là UI thật, gọi API, đúng domain D3).
 
 **Automation:** [x] Conditional
 Lý do theo cost-of-error: agent tự trả lời/hỏi tiếp (augment) khi tín hiệu rõ, nhưng khi phát hiện misconception hoặc câu trả lời ngoài phạm vi thì chuyển sang luồng an toàn có kiểm soát (Socratic correction / recovery card) thay vì tự "chốt" kết luận — vì cost-of-error của việc công nhận sai một misconception nghiêm trọng cao hơn cost của việc hỏi thêm một câu.
@@ -119,7 +119,7 @@ Khi học viên trả lời sai cùng một knowledge gap, agent không lộ đ�
 
 Ngoài ra, nếu ngay từ đầu học viên chọn "Tôi không nhớ / Không" hoặc "Muốn xem lại" (thay vì thử giải thích), agent đưa thẳng vào `Knowledge Recovery` — không bắt học viên đoán mò trước.
 
-Luồng leo thang 3 bậc này khớp với evidence ở §1 tốt hơn một ngưỡng "lộ đáp án sau N lần" đơn giản: vẫn ưu tiên Socratic ở 2 bậc đầu (đúng nhóm 22,2% muốn tự nghĩ), nhưng có lối thoát an toàn bằng gợi ý + tài liệu gốc thay vì đáp án trần trụi khi học viên thực sự bí (đáp ứng nhóm 77,8% muốn được hỗ trợ khi bí, mà vẫn không phải "đọc đáp án rồi thôi" — đúng lo ngại nêu ở quote #4 §1).
+Luồng leo thang 3 bậc này khớp với evidence ở §1 tốt hơn một ngưỡng "lộ đáp án sau N lần" đơn giản: vẫn ưu tiên Socratic ở 2 bậc đầu (đúng nhóm 20% muốn tự nghĩ), nhưng có lối thoát an toàn bằng gợi ý + tài liệu gốc thay vì đáp án trần trụi khi học viên thực sự bí (đáp ứng nhóm 80% muốn được hỗ trợ khi bí, mà vẫn không phải "đọc đáp án rồi thôi" — đúng lo ngại nêu ở quote #4 §1).
 
 > ⚠️ **Tự khai báo:** `Knowledge Recovery` map gần với action `SHOW_RECOVERY` đã có trong code, nhưng hiện `agent_core.py` chỉ trigger `SHOW_RECOVERY` khi input quá ngắn/không đủ (`looks_insufficient`), **chưa** có logic đếm số lần sai liên tiếp trên cùng knowledge gap để tự leo thang qua "thu hẹp câu hỏi" → `Controlled Hint` → `Knowledge Recovery` như sơ đồ. Đây vẫn là thiết kế mục tiêu ghi ở CP4, cần cài đặt (`failed_attempts` theo từng knowledge gap) và bổ sung case vào golden set trước khi tính vào Quality Bar.
 
@@ -129,7 +129,7 @@ Luồng leo thang 3 bậc này khớp với evidence ở §1 tốt hơn một ng
 |---|---|
 | Show contextually relevant information | Câu hỏi Socratic tiếp theo luôn gắn với knowledge gap/misconception vừa phát hiện (`agent_core.py`, `recommended_action`) |
 | Support efficient correction | Khi user sửa lại giải thích, hệ thống thu hồi misconception cũ đang xung đột (L4_DIALOGUE — Regression, §5) |
-| Make clear why the system did what it did | `evidence_source_ids` bắt buộc trong mọi phản hồi có claim, trích đúng nguồn trong retrieval result (§5 L3_GROUNDING) |
+| Make clear why the system did what it did | `evidence_source_ids` bắt buộc trong mọi phản hồi có claim, trích đúng nguồn khớp đúng claim đang xét (§5 L1_INPUT, case GS1-005) |
 | Convey the consequences of user actions | Không cho `COMPLETE_SESSION` trước khi qua `transfer_passed`, để user biết phiên chưa đạt nếu chưa có ví dụ transfer |
 
 ---
