@@ -4,8 +4,8 @@
 
 Hai luồng được giữ độc lập:
 
-- `learning_platform.py` + `server.py`: backend web đa chủ đề, session/message bền vững và runtime Offline/OpenAI.
-- `agent_core.py` + `agent_graph.py` + `run_eval.py`: evaluation harness D3 ban đầu, giữ mastery gate và bộ 20 golden cases.
+- `lesson_engine.py` + `platform_runtime.py` + `server.py`: adapter web đa chủ đề, session/message bền vững và runtime Offline/OpenAI; toàn bộ quyết định dạy học đi qua `agent_core.py`/`agent_graph.py`.
+- `agent_core.py` + `agent_graph.py`: evaluation harness D3 ban đầu, giữ mastery gate. `run_eval.py` (harness cho bộ K1-K4 20/28-case cũ) đã bị xoá; toàn bộ eval hiện chạy qua `run_eval_risk.py` với `eval/golden_set.json` (30-case risk-taxonomy).
 
 ## Chạy web
 
@@ -80,7 +80,7 @@ Invoke-RestMethod `
 Test backend web không cần gọi model:
 
 ```powershell
-python -m unittest codebase.tests.test_learning_platform -v
+python -m unittest codebase.tests.test_lesson_engine -v
 ```
 
 Evaluation harness D3 cần cài dependency:
@@ -88,12 +88,20 @@ Evaluation harness D3 cần cài dependency:
 ```powershell
 python -m pip install -r codebase/requirements.txt
 python -m unittest discover -s codebase/tests -v
-python codebase/run_eval.py --provider offline
 ```
 
-Chạy golden set bằng OpenAI thật:
+Unit test ở trên kiểm tra logic code và không phải điểm chất lượng model. Runner
+Golden set duy nhất (`run_eval_risk.py`) bắt buộc gọi OpenAI; không còn fallback
+offline khi thiếu key. Chạy bộ 30 case risk-taxonomy (`eval/golden_set.json`) trên
+đúng pipeline mà web dùng:
 
 ```powershell
+# Cần key; prompt và raw response được log theo từng run
 $env:OPENAI_API_KEY="..."
-python codebase/run_eval.py --provider openai
+$env:OPENAI_MODEL="gpt-5-mini"
+python codebase/run_eval_risk.py --pipeline web --golden eval/golden_set.json
 ```
+
+Mỗi run tạo `results.jsonl`, `report.md`, `summary.json`, `model_calls.jsonl`
+trong `eval/runs/` và thêm một dòng vào `eval/run_history.jsonl`. API key không
+được ghi vào log.

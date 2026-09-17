@@ -421,11 +421,7 @@
           const button = document.createElement("button");
           button.className = "welcome-card";
           button.innerHTML = `<small>${escapeHtml(lesson.track)}</small><strong>${escapeHtml(lesson.title)}</strong>`;
-          button.addEventListener("click", () => {
-            els.messageInput.value = `Mình muốn ôn lại phần ${lesson.title}. Bạn hãy đóng vai học viên và đặt câu hỏi để mình dạy lại nhé.`;
-            els.messageInput.focus();
-            resizeInput();
-          });
+          button.addEventListener("click", () => startLesson(lesson.id));
           grid.appendChild(button);
         }
         renderSessions();
@@ -541,6 +537,20 @@
         try {
           state.activeSession = await api(`/api/sessions/${encodeURIComponent(sessionId)}`);
           renderActiveSession();
+        } catch (error) { toast(error.message); }
+      }
+
+      async function startLesson(lessonId) {
+        try {
+          state.activeSession = await api("/api/sessions", {
+            method: "POST",
+            body: JSON.stringify({ lesson_id: lessonId }),
+          });
+          els.messageInput.value = "";
+          resizeInput();
+          await refreshSessions();
+          renderActiveSession();
+          els.messageInput.focus();
         } catch (error) { toast(error.message); }
       }
 
