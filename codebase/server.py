@@ -49,6 +49,20 @@ def make_handler(agent: TeachBackAgent, sessions: GraphSessionRunner):
             if self.path == "/health":
                 self._json({"ok": True, "provider": agent.provider.name})
                 return
+            if self.path.startswith("/api/session/"):
+                session_id = self.path[len("/api/session/") :]
+                if not session_id:
+                    self._json(
+                        {"error": "invalid_request", "message": "session_id required"},
+                        HTTPStatus.BAD_REQUEST,
+                    )
+                    return
+                state = sessions.get_state(session_id)
+                if state is None:
+                    self._json({"error": "not_found"}, HTTPStatus.NOT_FOUND)
+                    return
+                self._json(state)
+                return
             self._json({"error": "not_found"}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:  # noqa: N802

@@ -148,7 +148,11 @@ POINT_SIGNAL_PATTERNS: dict[str, tuple[str, ...]] = {
     ),
     "K4": (
         r"(rag|tool).{0,45}(nguon|tai lieu|du lieu|kiem chung)",
-        r"(?<!khong tu )(tra nguon|trich dan|citation|kiem chung)",
+        # Loại trừ các cách nói "kiểm chứng" chỉ đang MÔ TẢ trạng thái (chưa/đã
+        # được kiểm chứng, không tự kiểm chứng) — đây là ý K2 (hợp lý không
+        # đồng nghĩa đúng), không phải K4 (dùng kiểm chứng như một biện pháp
+        # giảm rủi ro). Không dùng lookbehind cho toàn cụm vì độ dài khác nhau.
+        r"(?<!khong tu )(?<!da duoc )(?<!chua duoc )(?<!khong duoc )(tra nguon|trich dan|citation|kiem chung)",
         r"them dung tai lieu",
         r"dua them nguon",
         r"khong co can cu.{0,20}khong biet",
@@ -595,15 +599,26 @@ class OpenAIResponsesProvider:
                 f"previous_question_was_rejected_because: {feedback}. "
                 "Draft a different question that fixes this exact problem."
             )
+        instructions = (
+            "You draft exactly one short Vietnamese Socratic question for a bounded "
+            "Teach-back Agent about why LLMs can hallucinate. Only ask about the lesson "
+            "topic and the stated target knowledge gap or misconception below — never "
+            "ask about an unrelated subject. Ask at most one question, and never reveal "
+            "the full answer, list all four knowledge points, or dump the correct answer "
+            "in the question text."
+        )
+        if action == "ASK_TRANSFER":
+            instructions += (
+                " The learner has already covered every required knowledge point for this "
+                "lesson — do NOT ask them to re-explain the mechanism or any concept again, "
+                "and do NOT phrase this as another 'why' question about the target gap. "
+                "Instead, explicitly ask them to describe ONE NEW, concrete situation "
+                "(different from anything already discussed in this conversation) where an "
+                "AI answer would sound plausible and confident but still needs to be "
+                "verified before being trusted."
+            )
         payload = self._request_structured(
-            instructions=(
-                "You draft exactly one short Vietnamese Socratic question for a bounded "
-                "Teach-back Agent about why LLMs can hallucinate. Only ask about the lesson "
-                "topic and the stated target knowledge gap or misconception below — never "
-                "ask about an unrelated subject. Ask at most one question, and never reveal "
-                "the full answer, list all four knowledge points, or dump the correct answer "
-                "in the question text."
-            ),
+            instructions=instructions,
             input_text="\n".join(context_lines),
             schema=QUESTION_SCHEMA,
             schema_name="teachback_question",

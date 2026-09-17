@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>D3 Teach-back · Vì sao LLM có thể bịa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090b;
+    --surface: #131316;
+    --surface-raised: #18181b;
+    --surface-hover: #1f1f23;
+    --border: #27272a;
+    --border-strong: #34343a;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --text-faint: #71717a;
+    --accent: #818cf8;
+    --accent-dim: #4338ca33;
+    --emerald: #34d399;
+    --emerald-dim: #34d39920;
+    --amber: #fbbf24;
+    --amber-dim: #fbbf2420;
+    --rose: #fb7185;
+    --rose-dim: #fb718520;
+    --slate: #a1a1aa;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --ease: cubic-bezier(.22,1,.36,1);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  button { font-family: inherit; }
+
+  .shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 20px 20px;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+  }
+  @media (max-width: 760px) {
+    .shell { height: auto; min-height: 100%; overflow: visible; padding-bottom: 32px; }
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-title { display: flex; flex-direction: column; gap: 3px; }
+  .header-title h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .header-title p { font-size: 12.5px; color: var(--text-faint); margin: 0; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    transition: background 250ms var(--ease), color 250ms var(--ease), border-color 250ms var(--ease);
+    white-space: nowrap;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .badge[data-tone="mastered"] { color: var(--emerald); background: var(--emerald-dim); border-color: #34d39940; }
+  .badge[data-tone="risk"] { color: var(--rose); background: var(--rose-dim); border-color: #fb718540; }
+  .badge[data-tone="warn"] { color: var(--amber); background: var(--amber-dim); border-color: #fbbf2440; }
+  .badge[data-tone="neutral"] { color: var(--text-muted); }
+
+  .icon-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 150ms var(--ease), color 150ms var(--ease), border-color 150ms var(--ease);
+  }
+  .icon-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-strong); }
+  .icon-btn:active { transform: scale(0.97); }
+  .icon-btn svg { transition: transform 400ms var(--ease); }
+  .icon-btn:hover svg { transform: rotate(-90deg); }
+
+  /* ---------- Progress ---------- */
+  .progress-block { display: flex; flex-direction: column; gap: 5px; }
+  .progress-row { display: flex; align-items: center; gap: 12px; }
+  .progress-track {
+    position: relative;
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--surface-raised);
+    overflow: hidden;
+  }
+  .progress-fill {
+    position: absolute; inset: 0; width: 0%;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width 600ms var(--ease), background 400ms var(--ease);
+  }
+  .progress-fill[data-tone="mastered"] { background: var(--emerald); }
+  .progress-pct { font-size: 12px; color: var(--text-faint); min-width: 32px; text-align: right; }
+  .level-label { font-size: 11.5px; color: var(--text-faint); font-style: italic; transition: color 300ms var(--ease); }
+
+  /* ---------- Grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: 1fr;
+    gap: 16px;
+    flex: 1;
+    min-height: 0;
+  }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    min-height: 0;
+  }
+  @media (max-width: 760px) {
+    .panel { min-height: auto; height: auto !important; }
+  }
+  .panel-pad { padding: 16px; }
+  .panel-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--text-faint); text-transform: uppercase;
+    margin: 0 0 12px;
+  }
+
+  /* Panel trái: sơ đồ + hiểu sai đứng yên, chỉ khối nguồn trích dẫn cuộn riêng */
+  .aside-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  .aside-fixed { flex: none; padding: 16px 16px 0; }
+  .aside-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 16px; }
+  @media (max-width: 760px) {
+    .aside-panel { height: auto; overflow: visible; }
+    .aside-scroll { overflow-y: visible; max-height: none; }
+  }
+
+  /* ---------- Node-chain skill tree (K1-K4) ---------- */
+  .node-chain { display: flex; flex-direction: column; }
+  .node-row { display: flex; align-items: center; gap: 12px; padding: 3px 0; }
+  .node-circle {
+    position: relative; flex: none;
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-raised);
+    border: 2px solid var(--border);
+    color: var(--text-faint);
+    font-weight: 700; font-size: 12.5px;
+    transition: background 400ms var(--ease), border-color 400ms var(--ease), box-shadow 400ms var(--ease), color 400ms var(--ease);
+  }
+  .node-num { transition: opacity 200ms var(--ease); }
+  .node-check {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(.4); color: #052e1c;
+    transition: all 350ms cubic-bezier(.34,1.56,.64,1);
+  }
+  .node-row[data-state="active"] .node-circle {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    animation: node-pulse 1.8s infinite;
+  }
+  @keyframes node-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px #818cf822, 0 0 14px -3px #818cf8aa; }
+    50% { box-shadow: 0 0 0 6px #818cf80f, 0 0 18px 0px #818cf8cc; }
+  }
+  .node-row[data-state="covered"] .node-circle {
+    border-color: var(--emerald);
+    background: var(--emerald);
+    box-shadow: 0 0 14px -2px #34d399aa;
+  }
+  .node-row[data-state="covered"] .node-num { opacity: 0; }
+  .node-row[data-state="covered"] .node-check { opacity: 1; transform: scale(1); }
+
+  .node-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .node-id { font-size: 10.5px; font-weight: 700; color: var(--text-faint); letter-spacing: 0.02em; }
+  .node-row[data-state="active"] .node-id { color: var(--accent); }
+  .node-row[data-state="covered"] .node-id { color: var(--emerald); }
+  .node-label { font-size: 12.5px; color: var(--text-muted); transition: color 300ms var(--ease); }
+  .node-row[data-state="covered"] .node-label { color: var(--text); }
+
+  .connector { position: relative; width: 2px; height: 20px; margin-left: 16px; background: var(--border); overflow: visible; }
+  .connector-fill {
+    position: absolute; inset: 0;
+    background: linear-gradient(var(--emerald), var(--accent));
+    transform: scaleY(0); transform-origin: top;
+    transition: transform 650ms var(--ease);
+  }
+  .connector.filled .connector-fill { transform: scaleY(1); }
+  .connector-spark {
+    position: absolute; left: 50%; top: -4px;
+    width: 7px; height: 7px; margin-left: -3.5px;
+    border-radius: 999px; background: #fff;
+    box-shadow: 0 0 10px 3px var(--emerald);
+    opacity: 0;
+  }
+  .connector.spark-run .connector-spark { animation: spark-travel 650ms var(--ease); }
+  @keyframes spark-travel {
+    0% { top: -4px; opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* Misconception alerts */
+  .mis-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--rose-dim);
+    border: 1px solid #fb718530;
+    font-size: 12px; color: var(--rose);
+    line-height: 1.4;
+    margin-bottom: 6px;
+  }
+  .mis-empty { font-size: 12px; color: var(--text-faint); font-style: italic; }
+
+  /* Source citations */
+  .src-item {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    margin-bottom: 6px;
+  }
+  .src-id { font-size: 11px; font-weight: 600; color: var(--accent); }
+  .src-text { font-size: 12px; color: var(--text-faint); line-height: 1.45; margin-top: 2px; }
+  .src-empty { font-size: 12px; color: var(--text-faint); font-style: italic; }
+
+  /* ---------- Chat panel ---------- */
+  .chat-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+  @media (max-width: 760px) {
+    .chat-panel { height: 560px; }
+  }
+  .chat-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Companion creature */
+  .companion { position: relative; width: 46px; height: 46px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .companion[data-mood="idle"]      { --mood-color: #818cf8; }
+  .companion[data-mood="thinking"]  { --mood-color: #818cf8; }
+  .companion[data-mood="confused"]  { --mood-color: #fb7185; }
+  .companion[data-mood="worried"]   { --mood-color: #fbbf24; }
+  .companion[data-mood="puzzled"]   { --mood-color: #a1a1aa; }
+  .companion[data-mood="happy"]     { --mood-color: #34d399; }
+
+  .companion-glow {
+    position: absolute; inset: -9px; border-radius: 50%;
+    background: radial-gradient(circle, var(--mood-color) 0%, transparent 72%);
+    opacity: .32; filter: blur(1px);
+    animation: glow-breathe 3.2s ease-in-out infinite;
+    transition: background 450ms var(--ease);
+  }
+  @keyframes glow-breathe { 0%, 100% { transform: scale(1); opacity: .26; } 50% { transform: scale(1.16); opacity: .5; } }
+
+  .companion-blob {
+    position: relative; width: 40px; height: 40px;
+    background: linear-gradient(155deg, var(--mood-color), var(--mood-color));
+    background-blend-mode: normal;
+    filter: brightness(1);
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    animation: blob-morph 6s ease-in-out infinite, blob-breathe 3.2s ease-in-out infinite;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 2px 10px -2px rgba(0,0,0,.5);
+    transition: background 450ms var(--ease);
+  }
+  @keyframes blob-morph {
+    0%, 100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; }
+    33% { border-radius: 63% 37% 41% 59% / 55% 40% 60% 45%; }
+    66% { border-radius: 37% 63% 55% 45% / 59% 55% 45% 41%; }
+  }
+  @keyframes blob-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  .companion[data-mood="thinking"] .companion-blob { animation-duration: 6s, 1.5s; }
+  .companion[data-mood="confused"] .companion-blob { animation: blob-morph 6s ease-in-out infinite, wobble .5s ease-in-out infinite; }
+  .companion[data-mood="happy"] .companion-blob { animation: blob-morph 4s ease-in-out infinite, bounce-happy .7s cubic-bezier(.34,1.56,.64,1) infinite; }
+  @keyframes wobble { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+  @keyframes bounce-happy { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.06); } }
+
+  .companion-face { position: absolute; inset: 0; }
+  .eye {
+    position: absolute; top: 15px; width: 5px; height: 6px; border-radius: 50%;
+    background: #0b0b10; animation: blink 4.6s infinite;
+  }
+  .eye.left { left: 12px; } .eye.right { right: 12px; }
+  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+
+  .mouth { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); transition: all 350ms var(--ease); }
+  .companion[data-mood="idle"] .mouth,
+  .companion[data-mood="thinking"] .mouth {
+    width: 9px; height: 0; border-top: 2px solid #0b0b10; border-radius: 2px;
+  }
+  .companion[data-mood="happy"] .mouth {
+    width: 13px; height: 13px; border: 2px solid transparent; border-bottom-color: #03140c; border-radius: 50%;
+  }
+  .companion[data-mood="confused"] .mouth {
+    width: 10px; height: 10px; border: 2px solid transparent; border-top-color: #3d0512; border-radius: 50%; transform: translateX(-50%) translateY(2px);
+  }
+  .companion[data-mood="worried"] .mouth {
+    width: 8px; height: 0; border-top: 2px solid #3d2d05; border-radius: 2px; transform: translateX(-50%) rotate(-8deg);
+  }
+  .companion[data-mood="puzzled"] .mouth {
+    width: 6px; height: 6px; border: none; background: #1c1c1f; border-radius: 50%;
+  }
+
+  .particle {
+    position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; margin: -2.5px;
+    border-radius: 999px; background: var(--emerald); box-shadow: 0 0 6px 1px var(--emerald);
+    animation: particle-fly 850ms ease-out forwards; pointer-events: none;
+  }
+  @keyframes particle-fly { to { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; } }
+
+  .chat-head-text p { margin: 0; }
+  .chat-head-text .name { font-size: 13px; font-weight: 600; }
+  .chat-head-text .state { font-size: 11.5px; color: var(--text-faint); display: flex; align-items: center; gap: 5px; margin-top: 1px; }
+  .live-dot { width: 5px; height: 5px; border-radius: 999px; background: var(--emerald); }
+  .live-dot.busy { background: var(--amber); animation: pulse-soft 1s infinite; }
+  @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  .chat-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .row { display: flex; }
+  .row.agent { justify-content: flex-start; }
+  .row.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 80%;
+    padding: 9px 13px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    line-height: 1.55;
+    animation: rise-in 280ms var(--ease);
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .row.agent .bubble {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .row.user .bubble {
+    background: var(--accent);
+    color: #0d0d14;
+    font-weight: 500;
+    border-bottom-right-radius: 4px;
+  }
+  .row.system .bubble {
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    color: var(--text-faint);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  .typing {
+    display: inline-flex; gap: 4px;
+    padding: 11px 13px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    border-bottom-left-radius: 4px;
+  }
+  .typing span {
+    width: 5px; height: 5px; border-radius: 999px; background: var(--text-faint);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  /* Recovery inline card */
+  .recovery-wrap {
+    display: grid; grid-template-rows: 0fr; opacity: 0;
+    transition: grid-template-rows 400ms var(--ease), opacity 300ms var(--ease);
+  }
+  .recovery-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-bottom: 4px; }
+  .recovery-inner { overflow: hidden; min-height: 0; }
+  .recovery-card {
+    border: 1px solid #fbbf2440;
+    background: var(--amber-dim);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .recovery-card .label { font-size: 11px; font-weight: 600; color: var(--amber); margin-bottom: 6px; letter-spacing: 0.02em; }
+  .recovery-card .refs { margin-top: 8px; font-size: 11px; color: var(--text-faint); }
+
+  /* Next-step banner — tín hiệu rõ ràng khi cần 1 bước cuối hoặc đã xong hẳn */
+  .banner-wrap {
+    display: grid; grid-template-rows: 0fr; opacity: 0;
+    transition: grid-template-rows 400ms var(--ease), opacity 300ms var(--ease);
+  }
+  .banner-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-bottom: 4px; }
+  .banner-inner { overflow: hidden; min-height: 0; padding: 0 16px; }
+  .banner {
+    display: flex; align-items: flex-start; gap: 9px;
+    border-radius: var(--radius-md);
+    padding: 11px 14px;
+    font-size: 12.5px; line-height: 1.5;
+    border: 1px solid var(--border);
+  }
+  .banner[data-tone="info"] { background: var(--accent-dim); border-color: #818cf845; color: var(--text); }
+  .banner[data-tone="success"] { background: var(--emerald-dim); border-color: #34d39960; color: var(--text); }
+
+  /* Composer */
+  .composer { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
+  .quick-row { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 2px; }
+  .quick-chip {
+    flex: none; font-size: 11.5px; font-weight: 500;
+    padding: 6px 10px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 150ms var(--ease);
+  }
+  .quick-chip:hover { border-color: var(--border-strong); color: var(--text-muted); background: var(--surface-raised); }
+
+  .input-row { display: flex; gap: 8px; }
+  .text-input {
+    flex: 1;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 13px;
+    font-size: 13.5px;
+    color: var(--text);
+    transition: border-color 150ms var(--ease);
+  }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+  .text-input::placeholder { color: var(--text-faint); }
+  .text-input:disabled { opacity: 0.5; }
+
+  .send-btn {
+    width: 38px; height: 38px; flex: none;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: #0d0d14;
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 150ms var(--ease), opacity 150ms var(--ease);
+  }
+  .send-btn:hover { opacity: 0.88; }
+  .send-btn:active { transform: scale(0.93); }
+  .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .footer-note { font-size: 11px; color: var(--text-faint); text-align: center; padding-top: 4px; }
+
+  /* Toasts */
+  .toast-stack {
+    position: fixed; top: 16px; right: 16px; z-index: 50;
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 13px; border-radius: var(--radius-sm);
+    background: var(--surface-raised); border: 1px solid var(--border);
+    font-size: 12.5px; font-weight: 500; color: var(--text);
+    box-shadow: 0 8px 24px -8px rgba(0,0,0,.6);
+    max-width: 270px;
+    animation: toast-in 350ms var(--ease), toast-out 300ms var(--ease) 2.7s forwards;
+  }
+  .toast[data-tone="success"] { border-color: #34d39950; }
+  .toast[data-tone="danger"] { border-color: #fb718550; }
+  .toast[data-tone="mastery"] { border-color: #34d39980; background: var(--emerald-dim); }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes toast-out { to { opacity: 0; transform: translateX(18px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<div class="shell">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">
+      <h1>Vì sao LLM có thể bịa</h1>
+      <p>D3 Teach-back · session <span class="mono" id="sessionLabel">–</span></p>
+    </div>
+    <div class="header-right">
+      <span class="badge" id="statusBadge" data-tone="neutral"><span class="dot"></span><span id="statusText">Chưa bắt đầu</span></span>
+      <button class="icon-btn" id="resetBtn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Phiên mới
+      </button>
+    </div>
+  </header>
+
+  <div class="progress-block">
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+    <p class="level-label" id="levelLabel">Không đủ bằng chứng để đánh giá</p>
+  </div>
+
+  <!-- Grid -->
+  <main class="grid">
+
+    <!-- LEFT: knowledge state -->
+    <aside class="panel aside-panel">
+      <div class="aside-fixed">
+        <p class="panel-label">Sơ đồ kiến thức</p>
+        <div class="node-chain" id="nodeChain">
+          <div class="node-row" data-point="K1" data-state="pending">
+            <div class="node-circle">
+              <span class="node-num">1</span>
+              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            </div>
+            <div class="node-info"><span class="node-id">K1 · 25đ</span><span class="node-label">Cơ chế sinh xác suất</span></div>
+          </div>
+          <div class="connector"><div class="connector-fill"></div><div class="connector-spark"></div></div>
+
+          <div class="node-row" data-point="K2" data-state="pending">
+            <div class="node-circle">
+              <span class="node-num">2</span>
+              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            </div>
+            <div class="node-info"><span class="node-id">K2 · 25đ</span><span class="node-label">Hợp lý không đồng nghĩa đúng</span></div>
+          </div>
+          <div class="connector"><div class="connector-fill"></div><div class="connector-spark"></div></div>
+
+          <div class="node-row" data-point="K3" data-state="pending">
+            <div class="node-circle">
+              <span class="node-num">3</span>
+              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            </div>
+            <div class="node-info"><span class="node-id">K3 · 20đ</span><span class="node-label">Nguồn gây thiếu / sai căn cứ</span></div>
+          </div>
+          <div class="connector"><div class="connector-fill"></div><div class="connector-spark"></div></div>
+
+          <div class="node-row" data-point="K4" data-state="pending">
+            <div class="node-circle">
+              <span class="node-num">4</span>
+              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            </div>
+            <div class="node-info"><span class="node-id">K4 · 15đ</span><span class="node-label">Giảm rủi ro, không tuyệt đối</span></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <p class="panel-label">Hiểu sai cần sửa</p>
+        <div id="misList"><p class="mis-empty">Chưa phát hiện hiểu sai nào.</p></div>
+
+        <div class="divider"></div>
+      </div>
+
+      <div class="aside-scroll">
+        <p class="panel-label">Nguồn trích dẫn gần nhất</p>
+        <div id="srcList"><p class="src-empty">Chưa có trích dẫn.</p></div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: chat -->
+    <section class="panel chat-panel">
+      <div class="chat-head">
+        <div class="companion" id="companion" data-mood="idle">
+          <div class="companion-glow"></div>
+          <div class="companion-blob">
+            <div class="companion-face">
+              <span class="eye left"></span>
+              <span class="eye right"></span>
+              <span class="mouth"></span>
+            </div>
+          </div>
+        </div>
+        <div class="chat-head-text">
+          <p class="name">Học trò AI</p>
+          <p class="state"><span class="live-dot" id="liveDot"></span><span id="liveText">Đang chờ bạn dạy</span></p>
+        </div>
+      </div>
+
+      <div class="chat-scroll" id="chatScroll"></div>
+
+      <div class="recovery-wrap" id="recoveryWrap">
+        <div class="recovery-inner" style="padding: 0 16px;">
+          <div class="recovery-card">
+            <p class="label">TÀI LIỆU ÔN TẬP</p>
+            <p id="recoveryText"></p>
+            <p class="refs" id="recoveryRefs"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="banner-wrap" id="bannerWrap">
+        <div class="banner-inner">
+          <div class="banner" id="bannerBox" data-tone="info">
+            <span id="bannerIcon">🎯</span>
+            <span id="bannerText"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="quick-row" id="quickRow">
+          <button class="quick-chip" data-demo="0" type="button">Ví dụ K1</button>
+          <button class="quick-chip" data-demo="1" type="button">Ví dụ K2</button>
+          <button class="quick-chip" data-demo="2" type="button">Ví dụ K3+K4</button>
+          <button class="quick-chip" data-demo="3" type="button">Hiểu sai (test)</button>
+        </div>
+        <div class="input-row">
+          <input type="text" id="textInput" class="text-input" placeholder="Giải thích cho học trò AI nghe..." autocomplete="off" />
+          <button class="send-btn" id="sendBtn" type="button" aria-label="Gửi">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <p class="footer-note">Kết nối tới <span class="mono" id="apiLabel"></span> · D3 Teach-back Agent</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Config ----------
+  const API_BASE = "http://127.0.0.1:8000";
+  document.getElementById('apiLabel').textContent = API_BASE;
+
+  // Trọng số điểm thật, khớp POINT_WEIGHTS trong agent_core.py — chỉ dùng để hiển thị,
+  // không ảnh hưởng tới điểm số thật (điểm số luôn tính ở backend).
+  const POINT_WEIGHTS = { K1: 25, K2: 25, K3: 20, K4: 15 };
+
+  // Nguyên văn progress_mapping trong knowledge/d3-llm-hallucination-ground-truth.json —
+  // không tự bịa câu mô tả, chỉ hiển thị lại đúng ngưỡng đã định nghĩa trong spec.
+  const LEVEL_MAP = [
+    { min: 0, text: 'Không đủ bằng chứng để đánh giá' },
+    { min: 35, text: 'Nắm được một phần cơ chế hoặc một nguyên nhân' },
+    { min: 70, text: 'Nắm cơ chế và khoảng trống giữa hợp lý với đúng, còn thiếu nguyên nhân hoặc ví dụ' },
+    { min: 100, text: 'Đủ tiêu chí hoàn thành (mastered)' },
+  ];
+
+  const DEMO_TEXTS = [
+    "LLM tao ra cau tra loi bang cach du doan token tiep theo theo mot phan bo xac suat, roi noi token do vao ngu canh va lap lai.",
+    "Mot cau nghe rat hop ly va tron chay khong co nghia la no da duoc kiem chung la dung su that, vi model khong tu dong tra cuu su that.",
+    "Model co the thieu can cu vi du lieu huan luyen bi thien lech hoac thong tin nam sau knowledge cutoff; dung RAG va yeu cau trich dan giup giam rui ro nhung khong bao dam dung tuyet doi.",
+    "RAG thi he thong het hallucination va dat do chinh xac 100% luon roi.",
+  ];
+
+  const GREETING = 'Chào bạn, mình là một AI đang tập hiểu vì sao chính những mô hình như mình lại có thể bịa ra câu trả lời sai. Bạn dạy mình với nhé?';
+
+  // ---------- Session ----------
+  function newSessionId() {
+    return (crypto.randomUUID ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+  }
+  let sessionId = localStorage.getItem('d3_session_id') || newSessionId();
+  localStorage.setItem('d3_session_id', sessionId);
+
+  // ---------- DOM refs ----------
+  const el = {
+    sessionLabel: document.getElementById('sessionLabel'),
+    statusBadge: document.getElementById('statusBadge'),
+    statusText: document.getElementById('statusText'),
+    resetBtn: document.getElementById('resetBtn'),
+    progressFill: document.getElementById('progressFill'),
+    progressPct: document.getElementById('progressPct'),
+    levelLabel: document.getElementById('levelLabel'),
+    nodeChain: document.getElementById('nodeChain'),
+    misList: document.getElementById('misList'),
+    srcList: document.getElementById('srcList'),
+    chatScroll: document.getElementById('chatScroll'),
+    companion: document.getElementById('companion'),
+    liveDot: document.getElementById('liveDot'),
+    liveText: document.getElementById('liveText'),
+    recoveryWrap: document.getElementById('recoveryWrap'),
+    recoveryText: document.getElementById('recoveryText'),
+    recoveryRefs: document.getElementById('recoveryRefs'),
+    bannerWrap: document.getElementById('bannerWrap'),
+    bannerBox: document.getElementById('bannerBox'),
+    bannerIcon: document.getElementById('bannerIcon'),
+    bannerText: document.getElementById('bannerText'),
+    textInput: document.getElementById('textInput'),
+    sendBtn: document.getElementById('sendBtn'),
+    quickRow: document.getElementById('quickRow'),
+    toastStack: document.getElementById('toastStack'),
+  };
+
+  el.sessionLabel.textContent = sessionId.slice(0, 8);
+
+  // "mastered" từ backend = đã đủ K1-K4, KHÔNG đồng nghĩa đã xong phiên —
+  // backend còn cần transfer_passed (agent_graph.py decide_route) trước khi
+  // thật sự dừng, tín hiệu đó nằm ở result.mastery_complete, không phải status.
+  const STATUS_META = {
+    partial:         { tone: 'neutral',  label: 'Đang tiến bộ' },
+    misconception:   { tone: 'risk',     label: 'Đang sửa hiểu sai' },
+    needs_recovery:  { tone: 'warn',     label: 'Cần ôn lại' },
+    copied_source:   { tone: 'warn',     label: 'Diễn đạt lại giúp mình' },
+    out_of_scope:    { tone: 'neutral',  label: 'Ngoài phạm vi bài học' },
+  };
+  const MOOD_BY_STATUS = {
+    misconception: 'confused',
+    needs_recovery: 'worried',
+    copied_source: 'thinking',
+    out_of_scope: 'puzzled',
+    partial: 'thinking',
+  };
+
+  function statusMeta(status, masteryComplete) {
+    if (status === 'mastered') {
+      return masteryComplete
+        ? { tone: 'mastered', label: 'Đã hoàn thành phiên' }
+        : { tone: 'warn', label: 'Đủ 4 ý · đang chờ ví dụ chuyển giao' };
+    }
+    return STATUS_META[status] || { tone: 'neutral', label: status || 'Chưa bắt đầu' };
+  }
+
+  function moodFor(status, masteryComplete) {
+    if (status === 'mastered') return masteryComplete ? 'happy' : 'thinking';
+    return MOOD_BY_STATUS[status] || 'idle';
+  }
+
+  // Theo dõi trạng thái trước đó để phát hiện "vừa mới đạt được" — chỉ nổ hiệu ứng/toast
+  // cho sự kiện mới, không lặp lại khi chỉ đơn thuần vẽ lại UI (ví dụ khi khôi phục phiên).
+  let prevCovered = new Set();
+  let wasMastered = false;
+
+  // ---------- Render: status / progress / mood ----------
+  function renderStatus(status, masteryComplete) {
+    const meta = statusMeta(status, masteryComplete);
+    el.statusBadge.setAttribute('data-tone', meta.tone);
+    el.statusText.textContent = meta.label;
+  }
+
+  function renderProgress(progress, mastered) {
+    progress = Math.max(0, Math.min(100, progress || 0));
+    el.progressFill.style.width = progress + '%';
+    el.progressFill.setAttribute('data-tone', mastered ? 'mastered' : '');
+    el.progressPct.textContent = progress + '%';
+    let level = LEVEL_MAP[0].text;
+    for (const step of LEVEL_MAP) { if (progress >= step.min) level = step.text; }
+    el.levelLabel.textContent = level;
+  }
+
+  function setMood(mood) { el.companion.setAttribute('data-mood', mood || 'idle'); }
+
+  // ---------- Render: node-chain skill tree ----------
+  function renderNodeChain(covered, activeGap, animate) {
+    const coveredSet = new Set(covered || []);
+    const rows = [...el.nodeChain.querySelectorAll('.node-row')];
+    const connectors = [...el.nodeChain.querySelectorAll('.connector')];
+
+    // Trạng thái từng node: độc lập, đúng theo ý nghĩa câu trả lời — agent không
+    // bắt buộc học viên trả lời theo thứ tự K1→K2→K3→K4, chỉ ưu tiên HỎI theo
+    // thứ tự đó khi còn thiếu (POINT_PRIORITY trong agent_core.py), nên một điểm
+    // ở sau hoàn toàn có thể sáng trước một điểm ở trước.
+    rows.forEach(row => {
+      const id = row.getAttribute('data-point');
+      const isCovered = coveredSet.has(id);
+      const wasCovered = prevCovered.has(id);
+      row.setAttribute('data-state', isCovered ? 'covered' : (id === activeGap ? 'active' : 'pending'));
+      if (animate && isCovered && !wasCovered) {
+        pushToast(`✓ ${id} hoàn thành · +${POINT_WEIGHTS[id]}đ`, 'success');
+      }
+    });
+
+    // Dây nối giữa hai node chỉ sáng khi CẢ HAI đầu đã xong — tránh vẽ một
+    // đường sáng chạy xuyên qua node còn tối khi thứ tự thực tế bị đảo.
+    connectors.forEach((connector, i) => {
+      const idA = rows[i].getAttribute('data-point');
+      const idB = rows[i + 1].getAttribute('data-point');
+      const linked = coveredSet.has(idA) && coveredSet.has(idB);
+      const wasLinked = prevCovered.has(idA) && prevCovered.has(idB);
+      if (linked) {
+        connector.classList.add('filled');
+        if (animate && !wasLinked) {
+          connector.classList.add('spark-run');
+          setTimeout(() => connector.classList.remove('spark-run'), 700);
+        }
+      } else {
+        connector.classList.remove('filled');
+      }
+    });
+
+    prevCovered = coveredSet;
+  }
+
+  function renderMisconceptions(list, animate) {
+    const items = list || [];
+    if (items.length === 0) {
+      el.misList.innerHTML = '<p class="mis-empty">Chưa phát hiện hiểu sai nào.</p>';
+      return;
+    }
+    el.misList.innerHTML = items.map(id =>
+      `<div class="mis-item"><span>⚠</span><span>${id} · cần sửa trước khi hoàn thành</span></div>`
+    ).join('');
+    if (animate) pushToast(`⚠ Phát hiện hiểu sai ${items[0]} — cần sửa trước khi tiếp tục`, 'danger');
+  }
+
+  function renderSources(cards) {
+    if (!cards || cards.length === 0) {
+      el.srcList.innerHTML = '<p class="src-empty">Chưa có trích dẫn.</p>';
+      return;
+    }
+    el.srcList.innerHTML = cards.map(c =>
+      `<div class="src-item"><div class="src-id">${c.id}</div><div class="src-text">${escapeHtml(c.paraphrase || '')}</div></div>`
+    ).join('');
+  }
+
+  function showRecovery(card, sourceIds) {
+    if (!card) { hideRecovery(); return; }
+    el.recoveryText.textContent = card.text || '';
+    el.recoveryRefs.textContent = (sourceIds && sourceIds.length) ? 'Nguồn: ' + sourceIds.join(', ') : '';
+    el.recoveryWrap.classList.add('open');
+  }
+  function hideRecovery() { el.recoveryWrap.classList.remove('open'); }
+
+  // Banner bước tiếp theo — tín hiệu tường minh, không bắt người dùng phải tự
+  // suy ra từ phần trăm progress bar.
+  function showBanner(icon, text, tone) {
+    el.bannerIcon.textContent = icon;
+    el.bannerText.textContent = text;
+    el.bannerBox.setAttribute('data-tone', tone);
+    el.bannerWrap.classList.add('open');
+  }
+  function hideBanner() { el.bannerWrap.classList.remove('open'); }
+
+  function setComposerLocked(locked) {
+    el.textInput.disabled = locked;
+    el.sendBtn.disabled = locked;
+    el.textInput.placeholder = locked
+      ? 'Phiên đã hoàn thành — bấm "Phiên mới" để luyện lại'
+      : 'Giải thích cho học trò AI nghe...';
+    [...el.quickRow.children].forEach(btn => { btn.disabled = locked; btn.style.opacity = locked ? 0.4 : ''; });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // ---------- Toasts ----------
+  function pushToast(text, tone) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.setAttribute('data-tone', tone || 'neutral');
+    t.textContent = text;
+    el.toastStack.appendChild(t);
+    setTimeout(() => t.remove(), 3100);
+  }
+
+  // ---------- Mastery celebration ----------
+  function spawnBurst(target) {
+    const colors = true;
+    for (let i = 0; i < 14; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.3;
+      const dist = 26 + Math.random() * 18;
+      p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+      p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+      target.appendChild(p);
+      setTimeout(() => p.remove(), 900);
+    }
+  }
+
+  // ---------- Chat ----------
+  function scrollToBottom() {
+    requestAnimationFrame(() => { el.chatScroll.scrollTop = el.chatScroll.scrollHeight; });
+  }
+
+  // ---------- Chat transcript (localStorage, theo từng session_id) ----------
+  // Backend chỉ lưu tổng hợp trạng thái + kết quả của LƯỢT GẦN NHẤT (xem
+  // GraphSessionRunner.get_state trong agent_graph.py), không lưu toàn bộ hội
+  // thoại. Muốn F5 lại vẫn thấy đủ các bong bóng chat cũ, phải tự lưu ở trình
+  // duyệt — chỉ tồn tại trên máy/trình duyệt này, không đồng bộ nơi khác.
+  function transcriptKey(id) { return 'd3_transcript_' + id; }
+  function loadTranscript(id) {
+    try { return JSON.parse(localStorage.getItem(transcriptKey(id)) || '[]'); }
+    catch (e) { return []; }
+  }
+  function saveMessageToTranscript(role, text) {
+    try {
+      const arr = loadTranscript(sessionId);
+      arr.push({ role, text });
+      localStorage.setItem(transcriptKey(sessionId), JSON.stringify(arr));
+    } catch (e) { /* localStorage đầy hoặc bị chặn — không chặn luồng chat */ }
+  }
+
+  function addMessage(role, text, opts) {
+    opts = opts || {};
+    const row = document.createElement('div');
+    row.className = 'row ' + role;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    el.chatScroll.appendChild(row);
+    scrollToBottom();
+    if (opts.persist !== false) saveMessageToTranscript(role, text);
+  }
+
+  let typingRow = null;
+  function showTyping() {
+    el.liveDot.classList.add('busy');
+    el.liveText.textContent = 'Đang suy nghĩ...';
+    setMood('thinking');
+    typingRow = document.createElement('div');
+    typingRow.className = 'row agent';
+    typingRow.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+    el.chatScroll.appendChild(typingRow);
+    scrollToBottom();
+  }
+  function hideTyping() {
+    el.liveDot.classList.remove('busy');
+    el.liveText.textContent = 'Đang chờ bạn dạy';
+    if (typingRow) { typingRow.remove(); typingRow = null; }
+  }
+
+  // ---------- API ----------
+  async function callAgent(explanation, reset) {
+    const res = await fetch(`${API_BASE}/api/teach`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, student_explanation: explanation, reset: !!reset }),
+    });
+    let payload;
+    try { payload = await res.json(); } catch (e) { payload = null; }
+    if (!res.ok) {
+      const msg = (payload && payload.message) ? payload.message : `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return payload;
+  }
+
+  function applyResult(result, animate) {
+    renderStatus(result.status, result.mastery_complete);
+    renderProgress(result.progress, result.mastery_complete);
+    renderNodeChain(result.covered_points, result.target_gap, animate);
+    renderMisconceptions(result.misconceptions, animate);
+    renderSources(result.source_cards);
+    setMood(moodFor(result.status, result.mastery_complete));
+
+    if (result.next_action === 'SHOW_RECOVERY' && result.recovery_card) {
+      showRecovery(result.recovery_card, result.evidence_source_ids);
+    } else {
+      hideRecovery();
+    }
+
+    // Tín hiệu dừng tường minh — không phụ thuộc vào việc đọc % progress bar.
+    if (result.mastery_complete) {
+      showBanner('✅', 'Đã hoàn thành phiên — đủ K1–K4, không còn hiểu sai, đã vượt ví dụ chuyển giao. Bấm "Phiên mới" để luyện lại.', 'success');
+      setComposerLocked(true);
+    } else {
+      setComposerLocked(false);
+      if (result.next_action === 'ASK_TRANSFER') {
+        showBanner('🎯', 'Chỉ còn một bước: hãy nêu một VÍ DỤ MỚI cho thấy câu trả lời nghe hợp lý nhưng vẫn cần được kiểm chứng.', 'info');
+      } else {
+        hideBanner();
+      }
+    }
+
+    if (!result.citations_valid) {
+      console.warn('citations_valid = false cho request này — kiểm tra retrieval.', result);
+    }
+
+    if (result.mastery_complete && animate && !wasMastered) {
+      setMood('happy');
+      spawnBurst(el.companion);
+      pushToast('🎉 Hoàn thành phiên — đủ K1–K4, không còn hiểu sai!', 'mastery');
+    }
+    wasMastered = !!result.mastery_complete;
+  }
+
+  function renderResult(result) {
+    addMessage('agent', result.agent_response);
+    applyResult(result, true);
+  }
+
+  async function handleSend(explanationOverride) {
+    const text = (explanationOverride !== undefined ? explanationOverride : el.textInput.value).trim();
+    if (!text) return;
+    addMessage('user', text);
+    el.textInput.value = '';
+    el.sendBtn.disabled = true;
+    el.textInput.disabled = true;
+    showTyping();
+
+    try {
+      const result = await callAgent(text, false);
+      hideTyping();
+      renderResult(result);
+    } catch (err) {
+      hideTyping();
+      setMood('confused');
+      addMessage('system', 'Lỗi kết nối tới agent: ' + err.message, { persist: false });
+      console.error(err);
+    } finally {
+      // Nếu phiên vừa được xác nhận hoàn thành, applyResult() đã khoá composer
+      // ở trên — đừng mở khoá lại ở đây, chỉ mở khi phiên vẫn đang tiếp diễn.
+      setComposerLocked(wasMastered);
+      if (!wasMastered) el.textInput.focus();
+    }
+  }
+
+  async function resetSession() {
+    // "Phiên mới" bỏ lại phiên hiện tại — dữ liệu tổng hợp (K1-K4, mastery...)
+    // của nó vẫn còn nguyên trong sessions.sqlite3 ở server, nhưng giao diện
+    // này sẽ không quay lại xem được nữa (chưa có màn hình chọn phiên cũ).
+    const proceed = window.confirm(
+      'Bắt đầu phiên mới sẽ rời khỏi đoạn chat hiện tại.\n\n' +
+      'Dữ liệu tiến độ của phiên này vẫn được lưu ở server, nhưng giao diện ' +
+      'hiện chưa có cách quay lại xem — coi như bắt đầu một buổi học mới.\n\n' +
+      'Tiếp tục?'
+    );
+    if (!proceed) return;
+
+    sessionId = newSessionId();
+    localStorage.setItem('d3_session_id', sessionId);
+    el.sessionLabel.textContent = sessionId.slice(0, 8);
+    el.chatScroll.innerHTML = '';
+    hideRecovery();
+    hideBanner();
+    setComposerLocked(false);
+    prevCovered = new Set();
+    wasMastered = false;
+    renderStatus(null);
+    renderProgress(0, false);
+    renderNodeChain([], null, false);
+    renderMisconceptions([], false);
+    renderSources([]);
+    setMood('idle');
+    addMessage('agent', GREETING);
+  }
+
+  // ---------- Wire up ----------
+  el.sendBtn.addEventListener('click', () => handleSend());
+  el.textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
+  el.resetBtn.addEventListener('click', resetSession);
+  el.quickRow.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-demo]');
+    if (!btn) return;
+    handleSend(DEMO_TEXTS[Number(btn.getAttribute('data-demo'))]);
+  });
+
+  // ---------- Boot ----------
+  async function fetchLatestState() {
+    try {
+      const res = await fetch(`${API_BASE}/api/session/${sessionId}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result && result.agent_response) return result;
+      }
+    } catch (err) {
+      console.warn('Không thể lấy trạng thái phiên từ server.', err);
+    }
+    return null;
+  }
+
+  async function boot() {
+    renderStatus(null);
+    renderProgress(0, false);
+    setMood('idle');
+
+    const transcript = loadTranscript(sessionId);
+    if (transcript.length > 0) {
+      // Có lịch sử chat thật đã lưu trên trình duyệt này — phát lại nguyên
+      // vẹn (không chỉ câu cuối), rồi vẽ lại thanh trạng thái từ server.
+      transcript.forEach(m => addMessage(m.role, m.text, { persist: false }));
+      const result = await fetchLatestState();
+      if (result) { applyResult(result, false); return; }
+      addMessage('system', 'Không lấy được trạng thái mới nhất từ server — có thể server chưa chạy.', { persist: false });
+      return;
+    }
+
+    // Không có lịch sử trên trình duyệt này (lần đầu mở, hoặc đã xoá dữ liệu
+    // trình duyệt) nhưng server vẫn còn nhớ — chỉ khôi phục được tóm tắt lượt
+    // gần nhất, không có đủ toàn bộ hội thoại để phát lại.
+    const result = await fetchLatestState();
+    if (result) {
+      addMessage('system', `Đã khôi phục tóm tắt phiên trước (chưa có lịch sử chat trên trình duyệt này) · lượt ${result.turn}`, { persist: false });
+      addMessage('agent', result.agent_response);
+      applyResult(result, false);
+      return;
+    }
+
+    addMessage('agent', GREETING);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
