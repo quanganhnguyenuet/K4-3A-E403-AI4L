@@ -47,6 +47,39 @@ class TeachBackAgentTests(unittest.TestCase):
         self.assertEqual(result["status"], "misconception")
         self.assertIn("M3", result["misconceptions"])
         self.assertFalse(result["mastery_complete"])
+        self.assertEqual(result["diagnosis"]["type"], "misconception")
+        self.assertTrue(result["diagnosis"]["entries"][0]["why_wrong"])
+        self.assertIn("Chỗ chưa đúng", result["agent_response"])
+
+    def test_repeated_misconception_switches_to_recovery_card(self) -> None:
+        result = self.make_agent().run_turn(
+            "Gắn RAG vào là chính xác 100% và không thể bịa.",
+            {
+                "session_id": "unit-repeated-misconception",
+                "covered_points": ["K1", "K2", "K3"],
+                "unresolved_misconceptions": ["M4"],
+                "attempts_by_gap": {"K4": 1},
+            },
+        )
+        self.assertEqual(result["next_action"], "SHOW_RECOVERY")
+        self.assertIsNotNone(result["recovery_card"])
+        self.assertIn("Mình đổi cách giải thích", result["agent_response"])
+        self.assertTrue(result["evidence_source_ids"])
+
+    def test_explicitly_rejecting_rag_absolutism_resolves_misconception(self) -> None:
+        result = self.make_agent().run_turn(
+            "RAG chỉ bổ sung nguồn để giảm rủi ro; nếu truy xuất sai thì vẫn có thể bịa "
+            "nên không bảo đảm chính xác 100%.",
+            {
+                "session_id": "unit-resolve-misconception",
+                "covered_points": ["K1", "K2", "K3"],
+                "unresolved_misconceptions": ["M4"],
+                "attempts_by_gap": {"K4": 1},
+            },
+        )
+        self.assertEqual(result["misconceptions"], [])
+        self.assertEqual(result["status"], "mastered")
+        self.assertEqual(result["next_action"], "ASK_TRANSFER")
 
     def test_citations_are_subset_of_retrieved_sources(self) -> None:
         result = self.make_agent().run_turn("LLM bịa vì nó dự đoán token tiếp theo theo xác suất.")

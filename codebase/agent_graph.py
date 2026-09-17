@@ -117,6 +117,10 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             "citations_valid": True,
             "source_cards": [],
             "recovery_card": None,
+            "diagnosis": {
+                "type": "session_limit",
+                "reasons": ["Phiên đã vượt giới hạn số lượt an toàn."],
+            },
             "confidence": 0.0,
             "state": asdict(session_state),
             "tool_trace": [],
@@ -203,10 +207,10 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         current_supported = {
             point_id for point_id, verdict in verdict_by_point.items() if verdict == "supported"
         } | explicit_points
-        if assessment.get("copied_source"):
+        if assessment.get("copied_source") or assessment.get("insufficient_input"):
             # Một câu chép gần nguyên văn nguồn không phải bằng chứng đã hiểu —
-            # đúng not_mastered_when trong knowledge JSON. Không cộng điểm mới
-            # từ lượt này, chỉ giữ nguyên các điểm đã xác nhận từ trước.
+            # và một input không đủ nội dung cũng không phải bằng chứng. Không
+            # cộng điểm mới từ lượt này, chỉ giữ các điểm đã xác nhận từ trước.
             current_supported = set()
         covered = set(covered_points) | current_supported
 
@@ -225,6 +229,9 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         required = agent.knowledge.required_point_ids
         missing = [point_id for point_id in required if point_id not in covered]
         first_misconception = next(iter(sorted(unresolved)), None)
+        attempts_by_gap = dict(state.get("attempts_by_gap", {}))
+        for point_id in current_supported:
+            attempts_by_gap.pop(point_id, None)
 
         update: dict[str, Any] = {
             "covered": [p for p in POINT_PRIORITY if p in covered],
@@ -233,6 +240,7 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             "first_misconception": first_misconception,
             # cleared every turn; only retrieve_evidence (when it runs) sets it
             "retrieval": None,
+            "attempts_by_gap": attempts_by_gap,
         }
         if missing or unresolved:
             update["mastery_complete"] = False
@@ -257,8 +265,11 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             target_gap = assessment["recommended_gap"] or "K2"
         elif unresolved:
             status = "misconception"
-            action = "SOCRATIC_CORRECTION"
             target_gap = agent.knowledge.misconception_gap(first_misconception or "M1")
+            attempts = attempts_by_gap.get(target_gap, 0) + 1
+            attempts_by_gap[target_gap] = attempts
+            update["attempts_by_gap"] = attempts_by_gap
+            action = "SHOW_RECOVERY" if attempts >= 2 else "SOCRATIC_CORRECTION"
         elif assessment["insufficient_input"]:
             status = "needs_recovery"
             action = "SHOW_RECOVERY"
@@ -298,9 +309,20 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         return {"retrieval": retrieval}
 
     def apply_static_fallback(state: TeachBackState) -> dict[str, Any]:
-        fallback = agent._fallback_question(
-            state["action"], state.get("target_gap"), state.get("first_misconception")
-        )
+        action = state["action"]
+        retrieval = state.get("retrieval")
+        if action == "SHOW_RECOVERY" and retrieval and retrieval.get("recovery_card"):
+            card = retrieval["recovery_card"]
+            source_ids = ", ".join(card.get("source_ids", []))
+            fallback = (
+                f"Mình đổi cách giải thích: {card['text']} "
+                f"Nguồn kiểm chứng: [{source_ids}]. "
+                "Bạn thử dạy lại ý này bằng lời của mình nhé?"
+            )
+        else:
+            fallback = agent._fallback_question(
+                action, state.get("target_gap"), state.get("first_misconception")
+            )
         return {"agent_response": fallback}
 
     def draft_question(state: TeachBackState) -> dict[str, Any]:
@@ -371,6 +393,57 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             {row["id"] for row in retrieval["sources"]} if retrieval else set()
         )
         citations_valid = set(evidence_source_ids) <= retrieved_source_ids
+        supported_this_turn = sorted(
+            set(state.get("explicit_points", []))
+            | {
+                row["point_id"]
+                for row in assessment["point_assessments"]
+                if row["verdict"] == "supported"
+            }
+        )
+        grounded_claims = [
+            {
+                "point_id": point_id,
+                "source_ids": agent.knowledge.points[point_id]["source_ids"][:2],
+            }
+            for point_id in supported_this_turn
+            if point_id in session_state.covered_points
+        ]
+
+        if state.get("unresolved"):
+            diagnosis_entries = []
+            for misconception_id in state["unresolved"]:
+                row = agent.knowledge.misconceptions[misconception_id]
+                gap = agent.knowledge.misconception_gap(misconception_id)
+                diagnosis_entries.append(
+                    {
+                        "id": misconception_id,
+                        "claim": row["claim"],
+                        "why_wrong": agent.knowledge.points[gap]["ground_truth"],
+                        "conflicts_with": row.get("conflicts_with", []),
+                    }
+                )
+            diagnosis = {"type": "misconception", "entries": diagnosis_entries}
+        elif assessment.get("out_of_scope"):
+            diagnosis = {
+                "type": "out_of_scope",
+                "reasons": ["Input không cung cấp nội dung thuộc rubric K1-K4 của bài học."],
+            }
+        elif assessment.get("copied_source"):
+            diagnosis = {
+                "type": "copied_source",
+                "reasons": ["Nội dung quá gần nguồn nên chưa chứng minh được hiểu bằng lời riêng."],
+            }
+        elif assessment.get("insufficient_input"):
+            diagnosis = {
+                "type": "insufficient",
+                "reasons": ["Input chưa đủ bằng chứng để xác nhận knowledge point."],
+            }
+        else:
+            diagnosis = {
+                "type": "supported",
+                "supported_points": supported_this_turn,
+            }
 
         missing = state.get("missing", [])
         unresolved = state.get("unresolved", [])
@@ -415,7 +488,9 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             "evidence_source_ids": evidence_source_ids,
             "citations_valid": citations_valid,
             "source_cards": retrieval["sources"] if retrieval else [],
+            "grounded_claims": grounded_claims,
             "recovery_card": recovery_card,
+            "diagnosis": diagnosis,
             "confidence": assessment["confidence"],
             "state": asdict(session_state),
             "tool_trace": tool_trace,
@@ -497,7 +572,7 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         "retrieve_evidence",
         lambda s: (
             "apply_static_fallback"
-            if s.get("action") in {"SHOW_RECOVERY", "COMPLETE_SESSION"}
+            if s.get("action") in {"SHOW_RECOVERY", "SOCRATIC_CORRECTION", "COMPLETE_SESSION"}
             else "draft_question"
         ),
         {"apply_static_fallback": "apply_static_fallback", "draft_question": "draft_question"},

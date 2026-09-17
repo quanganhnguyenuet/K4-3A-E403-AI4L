@@ -168,6 +168,7 @@
     .source b { font-size: 10px; color: var(--green); }
     .source small { color: var(--faint); font-size: 9px; margin-left: 5px; }
     .source p { font-size: 11px; line-height: 1.45; margin: 6px 0 0; color: var(--muted); }
+    .source blockquote { margin: 8px 0 0; padding: 7px 9px; border-left: 2px solid #b8d6c1; background: #f3f7f3; color: var(--ink); font-size: 10.5px; line-height: 1.5; }
     .privacy { margin-top: 24px; padding: 11px; border-radius: 12px; background: #edf3ee; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
 
     .modal-backdrop { position: fixed; inset: 0; background: rgba(20, 28, 23, .38); display: none; place-items: center; padding: 20px; z-index: 20; }
@@ -264,7 +265,7 @@
       <div class="task-card" id="taskCard">Agent sẽ tự xác định bài học từ prompt đầu tiên rồi nạp rubric và nguồn phù hợp.</div>
       <div class="inspector-label">Nguồn liên quan gần nhất</div>
       <div class="source-list" id="sourceList"><div class="empty-note">Nguồn sẽ xuất hiện sau khi bạn dạy lại.</div></div>
-      <div class="privacy">Knowledge chỉ trả về diễn giải ngắn và mã định vị transcript. Nội dung transcript đầy đủ không được gửi ra giao diện.</div>
+      <div class="privacy">Knowledge trả về diễn giải và mã định vị. Khi bạn yêu cầu nguồn, hệ thống chỉ hiển thị một trích đoạn transcript ngắn đúng locator, không gửi toàn bộ transcript.</div>
     </aside>
   </div>
 
@@ -499,7 +500,8 @@
         for (const source of sources) {
           const div = document.createElement("article");
           div.className = "source";
-          div.innerHTML = `<b>${escapeHtml(source.id)}</b><small>${escapeHtml(source.file)} · ${escapeHtml(source.locator)}</small><p>${escapeHtml(source.paraphrase)}</p>`;
+          const quote = source.quote ? `<blockquote>“${escapeHtml(source.quote)}”</blockquote>` : "";
+          div.innerHTML = `<b>${escapeHtml(source.id)}</b><small>${escapeHtml(source.file)} · ${escapeHtml(source.locator)}</small><p>${escapeHtml(source.paraphrase)}</p>${quote}`;
           els.sourceList.appendChild(div);
         }
       }

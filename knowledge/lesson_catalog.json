@@ -56,6 +56,22 @@
           "source_ids": ["T06-139", "T06-148", "D1-S29"]
         }
       ],
+      "misconceptions": [
+        {
+          "id": "M-LLM-1",
+          "claim": "Đặt temperature bằng 0 thì LLM luôn đúng và không thể bịa.",
+          "signals": ["temperature bằng 0 thì luôn đúng", "temperature 0 thì không bịa", "temperature bằng 0 sẽ không bao giờ hallucinate"],
+          "explanation": "Temperature thấp chỉ làm cách chọn token ổn định hơn; nó không bổ sung tri thức hoặc bước kiểm chứng sự thật.",
+          "conflicts_with": ["K4"]
+        },
+        {
+          "id": "M-LLM-2",
+          "claim": "Có RAG thì câu trả lời chính xác tuyệt đối.",
+          "signals": ["RAG chính xác 100%", "RAG thì không thể bịa", "có RAG là hết hallucination"],
+          "explanation": "RAG có thể truy xuất nhầm hoặc dùng nguồn sai, nên chỉ giảm rủi ro chứ không bảo đảm chính xác tuyệt đối.",
+          "conflicts_with": ["K4"]
+        }
+      ],
       "sources": [
         {"id": "T04-047", "type": "transcript", "file": "transcript-04-clean.md", "locator": "T04-047", "paraphrase": "LLM nối token vừa sinh vào chuỗi rồi tiếp tục dự đoán token kế tiếp."},
         {"id": "T06-136", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-136", "paraphrase": "LLM dự báo token theo xác suất; temperature tác động tới cách chọn token."},
@@ -122,6 +138,22 @@
           "source_ids": ["T02-015", "T02-018"]
         }
       ],
+      "misconceptions": [
+        {
+          "id": "M-SCOPE-1",
+          "claim": "Có ý tưởng AI là có thể bắt đầu xây ngay, không cần kiểm tra pain point.",
+          "signals": ["có ý tưởng AI là xây luôn", "không cần tìm pain point", "không cần hiểu người dùng"],
+          "explanation": "Giải pháp AI chỉ đáng làm sau khi xác định người dùng, pain point và quy trình hiện tại.",
+          "conflicts_with": ["K1", "K4"]
+        },
+        {
+          "id": "M-SCOPE-2",
+          "claim": "Pain point nào cũng nên được ưu tiên như nhau.",
+          "signals": ["pain point nào cũng ưu tiên", "mọi vấn đề đều quan trọng như nhau"],
+          "explanation": "Các pain point cần được so sánh theo impact và effort để chọn phạm vi khả thi.",
+          "conflicts_with": ["K3"]
+        }
+      ],
       "sources": [
         {"id": "T01-017", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-017", "paraphrase": "Tư duy product bắt đầu bằng việc xác định bài toán đáng làm và viết nó rõ ràng."},
         {"id": "T01-071", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-071", "paraphrase": "Pha khám phá dùng quan sát, phỏng vấn, khảo sát và log hành vi để mở rộng insight."},
@@ -152,6 +184,22 @@
         {"id": "K3", "label": "Đi từ augmentation lên automation", "weight": 25, "ground_truth": "Nên bắt đầu với AI hỗ trợ có người giám sát rồi tăng dần tự động hóa khi đã có bằng chứng vận hành.", "signals": ["augmentation", "con người giám sát", "hỗ trợ con người", "tăng dần automation", "tự động hóa từng bước"], "question": "Vì sao nên bắt đầu bằng AI hỗ trợ con người thay vì tự động hóa toàn bộ ngay?", "recovery": "Hãy tưởng tượng quy trình 10 bước và chỉ giao hai bước ít rủi ro cho AI trước.", "source_ids": ["T02-032", "T02-033"]},
         {"id": "K4", "label": "Hậu quả quyết định quyền tự động", "weight": 25, "ground_truth": "Công việc có hậu quả lớn khi sai cần giữ gần phía augmentation, có phê duyệt và giới hạn quyền hành động.", "signals": ["hậu quả khi sai", "rủi ro cao", "người phê duyệt", "human in the loop", "giới hạn quyền", "không tự động hoàn toàn"], "question": "Nếu AI sai, hậu quả nào khiến bạn bắt buộc phải giữ bước phê duyệt của con người?", "recovery": "Đánh giá cả xác suất sai và mức thiệt hại trước khi cấp quyền hành động.", "source_ids": ["T02-034", "T03-081"]}
       ],
+      "misconceptions": [
+        {
+          "id": "M-METRIC-1",
+          "claim": "Càng nhiều lượt dùng thì sản phẩm chắc chắn càng có giá trị.",
+          "signals": ["nhiều lượt dùng là chắc chắn có giá trị", "nhiều user nghĩa là sản phẩm thành công"],
+          "explanation": "Usage chỉ là proxy; metric cuối phải phản ánh outcome hoặc giá trị thật người dùng nhận được.",
+          "conflicts_with": ["K1", "K2"]
+        },
+        {
+          "id": "M-METRIC-2",
+          "claim": "Tự động hóa càng nhiều luôn càng tốt.",
+          "signals": ["tự động hóa càng nhiều càng tốt", "automation toàn bộ luôn tốt hơn"],
+          "explanation": "Mức tự động hóa phải phụ thuộc hậu quả khi sai và bằng chứng vận hành, không phải lúc nào cao hơn cũng tốt hơn.",
+          "conflicts_with": ["K3", "K4"]
+        }
+      ],
       "sources": [
         {"id": "T02-019", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-019", "paraphrase": "Cần chọn chỉ số cho biết sản phẩm tạo hiệu quả, không chỉ đếm lượt vào."},
         {"id": "T02-024", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-024", "paraphrase": "Sản phẩm học tập nên đo kết quả học; usage là chỉ số trung gian."},
@@ -181,6 +229,22 @@
         {"id": "K3", "label": "Tách deterministic khỏi probabilistic", "weight": 25, "ground_truth": "Tính toán, ràng buộc và kiểm tra chắc chắn nên nằm trong code; LLM xử lý phần ngôn ngữ hoặc suy luận mềm.", "signals": ["tách deterministic", "phần chắc chắn", "công thức trong code", "llm xử lý ngôn ngữ", "probabilistic", "kiểm tra bằng code"], "question": "Trong giải pháp của bạn, đâu là phần phải đúng tuyệt đối và nên tách khỏi đầu ra xác suất của LLM?", "recovery": "Đưa công thức, validation và quyền quyết định cứng vào code; để model xử lý phần mơ hồ.", "source_ids": ["T03-074", "T03-077"]},
         {"id": "K4", "label": "Bổ sung knowledge và công cụ", "weight": 25, "ground_truth": "RAG cung cấp tri thức riêng, tools thực hiện hành động; mỗi thành phần cần giới hạn và bước kiểm tra phù hợp.", "signals": ["rag", "dữ liệu nội bộ", "retrieval", "tool calling", "công cụ", "nguồn tham chiếu", "kiểm tra đầu ra"], "question": "Model còn thiếu tri thức hay năng lực hành động nào khiến bạn phải thêm RAG hoặc tool?", "recovery": "RAG dùng để đưa tri thức ngoài model vào context; tool dùng để truy vấn hoặc hành động có kiểm soát.", "source_ids": ["T03-036", "T03-081"]}
       ],
+      "misconceptions": [
+        {
+          "id": "M-ARCH-1",
+          "claim": "Agent luôn tốt hơn workflow hoặc rule.",
+          "signals": ["agent luôn tốt hơn workflow", "bài toán nào cũng nên dùng agent"],
+          "explanation": "Rule hoặc workflow thường dễ kiểm soát hơn; chỉ nên thêm agent khi độ bất định thực sự cần nó.",
+          "conflicts_with": ["K1", "K2"]
+        },
+        {
+          "id": "M-ARCH-2",
+          "claim": "Có thể giao cả công thức và validation cho LLM.",
+          "signals": ["giao toàn bộ validation cho LLM", "công thức để LLM tự tính luôn"],
+          "explanation": "Công thức, validation và ràng buộc phải đúng nên được giữ trong code deterministic.",
+          "conflicts_with": ["K3"]
+        }
+      ],
       "sources": [
         {"id": "T02-036", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-036", "paraphrase": "Logic viết thành rule rõ ràng có thể chạy bằng code mà không cần AI."},
         {"id": "T02-037", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-037", "paraphrase": "Workflow tuần tự, phân nhánh và song song đáp ứng nhiều nhu cầu cơ bản."},
@@ -209,6 +273,22 @@
         {"id": "K2", "label": "Failure mode và fallback", "weight": 25, "ground_truth": "Liệt kê failure mode, phát hiện lỗi và thiết kế fallback/backup an toàn thay vì giả định hệ thống luôn chạy.", "signals": ["failure mode", "kịch bản lỗi", "fallback", "backup plan", "phát hiện lỗi", "xử lý khi sai", "graceful"], "question": "Khi thành phần quan trọng hỏng hoặc model không chắc chắn, hệ thống phát hiện và chuyển sang phương án nào?", "recovery": "Chọn một lỗi cụ thể, nêu tín hiệu phát hiện, hành động an toàn và người được thông báo.", "source_ids": ["T03-106"]},
         {"id": "K3", "label": "Quyền hạn và guardrail", "weight": 25, "ground_truth": "Agent có quyền gửi, công bố hoặc giao dịch cần kiểm tra đầu ra, giới hạn quyền và phê duyệt cho hành động rủi ro.", "signals": ["guardrail", "giới hạn quyền", "secret", "rò rỉ", "leak", "phê duyệt", "gửi email", "hành động rủi ro"], "question": "Trước khi agent thực hiện hành động ra thế giới thật, bạn sẽ chặn dữ liệu nhạy cảm và yêu cầu phê duyệt ở đâu?", "recovery": "Xem xét quyền đọc, quyền ghi, dữ liệu bí mật và hành động không thể hoàn tác.", "source_ids": ["T03-090"]},
         {"id": "K4", "label": "Đo lường và cải tiến liên tục", "weight": 25, "ground_truth": "Production cần metric dừng/đi tiếp, feedback người dùng và quy trình dùng dữ liệu thật để cải thiện có kiểm soát.", "signals": ["metric dừng", "go no go", "feedback người dùng", "continuous learning", "cải tiến liên tục", "dữ liệu production", "đo lường"], "question": "Bạn sẽ dùng metric và feedback production nào để quyết định tiếp tục, dừng hoặc cải tiến hệ thống?", "recovery": "Nêu ngưỡng go/no-go và cách biến feedback thành dữ liệu đánh giá phiên bản sau.", "source_ids": ["T03-120", "T03-121", "T03-122"]}
+      ],
+      "misconceptions": [
+        {
+          "id": "M-PROD-1",
+          "claim": "Demo chạy tốt thì có thể đưa thẳng vào production.",
+          "signals": ["demo chạy tốt là đưa thẳng production", "demo tốt thì production chắc chắn tốt"],
+          "explanation": "Production cần scope vận hành, failure mode, fallback, guardrail và metric riêng; demo tốt chưa chứng minh các điều đó.",
+          "conflicts_with": ["K1", "K2", "K3", "K4"]
+        },
+        {
+          "id": "M-PROD-2",
+          "claim": "Có guardrail thì hệ thống không còn rủi ro.",
+          "signals": ["có guardrail là hết rủi ro", "guardrail bảo đảm an toàn tuyệt đối"],
+          "explanation": "Guardrail giảm và giới hạn rủi ro nhưng vẫn cần phát hiện lỗi, fallback, phê duyệt và giám sát.",
+          "conflicts_with": ["K2", "K3"]
+        }
       ],
       "sources": [
         {"id": "T03-105", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-105", "paraphrase": "Hệ thống cần một phạm vi vận hành xác định thay vì cam kết cho mọi tình huống."},

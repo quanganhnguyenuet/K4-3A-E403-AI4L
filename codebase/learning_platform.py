@@ -27,6 +27,7 @@ CODEBASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = CODEBASE_DIR.parent
 DEFAULT_CATALOG_PATH = REPO_ROOT / "knowledge" / "lesson_catalog.json"
 DEFAULT_DB_PATH = CODEBASE_DIR / "state" / "learning.sqlite3"
+TRANSCRIPT_DIR = REPO_ROOT / "data" / "transcript"
 DEFAULT_MODEL = "gpt-5-mini"
 
 
@@ -492,6 +493,7 @@ class OpenAITurnAssessor:
                         "teachback_answer",
                         "learning_request",
                         "clarification_question",
+                        "source_request",
                         "social",
                         "unrelated",
                     ],
@@ -525,6 +527,14 @@ class OpenAITurnAssessor:
         input_payload = {
             "lesson": {"title": lesson["title"], "task": lesson["task"]},
             "rubric": rubric,
+            "known_misconceptions": [
+                {
+                    "id": row.get("id"),
+                    "claim": row.get("claim"),
+                    "explanation": row.get("explanation"),
+                }
+                for row in lesson.get("misconceptions", [])
+            ],
             "already_covered": covered_points,
             "recent_conversation": history,
             "learner_message": content,
@@ -535,6 +545,7 @@ class OpenAITurnAssessor:
                 "hãy phân loại ý định của learner_message. learning_request gồm yêu cầu bắt đầu "
                 "học, ôn lại, thiết lập vai trò hoặc nhờ bạn làm học viên. clarification_question "
                 "là khi người dùng hỏi khái niệm, xin ví dụ hay xin gợi ý. social là chào hỏi. "
+                "source_request là khi người dùng muốn xem nguồn, locator hoặc trích đoạn transcript. "
                 "teachback_answer chỉ dùng khi người dùng thật sự đang giải thích kiến thức. "
                 "unrelated chỉ dùng cho chủ đề rõ ràng không liên quan tới bất kỳ hoạt động học "
                 "nào trong bài. Việc nói chưa biết, quên bài, muốn học lại, dùng từ đồng nghĩa, "
@@ -542,7 +553,9 @@ class OpenAITurnAssessor:
                 "supported_points cho teachback_answer có bằng chứng ngữ nghĩa rõ; ý bị thiếu "
                 "không phải là hiểu sai. Với các intent còn lại, giữ supported_points rỗng và "
                 "trả lời trực tiếp, ấm áp trong feedback. next_question là một câu hỏi tự nhiên "
-                "giúp cuộc trò chuyện tiến lên. Không lặp lại máy móc tên bài hay câu task."
+                "giúp cuộc trò chuyện tiến lên. Nếu có misconception, feedback phải chỉ ra ngắn "
+                "gọn mệnh đề nào sai và vì sao sai theo rubric/known_misconceptions, không chỉ nói "
+                "chung chung rằng câu trả lời chưa đúng. Không lặp lại máy móc tên bài hay câu task."
             ),
             input_payload=input_payload,
             schema=schema,
@@ -580,6 +593,10 @@ class TeachBackPlatform:
     )
     QUESTION_PATTERNS = (
         r"\b(la gi|tai sao|vi sao|nhu the nao|the nao|khi nao|o dau|khac gi|co dung|vi du|goi y)\b",
+    )
+    SOURCE_REQUEST_PATTERNS = (
+        r"\b(cho|dua|hien|xem|lay|trich).{0,30}\b(nguon|trich dan|transcript|doan goc|nguyen van)\b",
+        r"\b(nguon o dau|theo transcript|locator nao|ma nguon nao)\b",
     )
     SOCIAL_PATTERNS = (r"^(xin chao|chao|hello|hi|cam on|thanks)(\b|[!. ])",)
     ROUTING_STOP_WORDS = {
@@ -805,9 +822,22 @@ class TeachBackPlatform:
         progress = sum(
             int(point["weight"]) for point in lesson["points"] if point["id"] in current_covered
         )
+        failure_streak = (
+            1 + self._recent_failure_streak(recent)
+            if assessment["misconceptions"] or assessment["insufficient"]
+            else 0
+        )
+        diagnosis: dict[str, Any] = {
+            "type": "supported" if assessment["supported_points"] else "incomplete",
+            "reasons": [],
+        }
 
         if assessment["out_of_scope"]:
             status = "out_of_scope"
+            diagnosis = {
+                "type": "out_of_scope",
+                "reasons": ["Nội dung không khớp knowledge của bài hiện tại."],
+            }
             response_text = (
                 f"Mình hiểu ý bạn, nhưng phần này chưa có trong knowledge hiện tại nên mình "
                 f"không muốn trả lời bằng cách đoán. {assessment.get('feedback', '').strip()} "
@@ -818,14 +848,34 @@ class TeachBackPlatform:
         elif assessment["insufficient"]:
             status = "needs_recovery"
             target_point = self._point_by_id(lesson, missing[0] if missing else point_order[-1])
+            diagnosis = {
+                "type": "insufficient",
+                "reasons": ["Chưa có đủ bằng chứng để xác nhận một knowledge point."],
+            }
             response_text = (
                 "Mình chưa bắt được ý bạn muốn giải thích — không sao, ta thu hẹp lại nhé. "
                 f"{target_point['recovery']} {target_point['question']}"
             )
         elif assessment["misconceptions"]:
-            status = "misconception"
-            target_point = self._point_by_id(lesson, missing[0] if missing else point_order[-1])
-            response_text = self._compose_response(assessment, target_point["question"])
+            target_point = self._misconception_target(
+                lesson, content, assessment["misconceptions"], missing
+            )
+            diagnosis = {
+                "type": "misconception",
+                "reasons": assessment["misconceptions"],
+                "target_point_id": target_point["id"],
+            }
+            if failure_streak >= 2:
+                status = "needs_recovery"
+                reasons = " ".join(assessment["misconceptions"])
+                response_text = (
+                    f"Mình thấy ý này vẫn đang gây vướng. Điểm chưa đúng là: {reasons} "
+                    f"Mình đổi sang gợi ý trực tiếp nhé: {target_point['recovery']} "
+                    f"{target_point['question']}"
+                )
+            else:
+                status = "misconception"
+                response_text = self._compose_response(assessment, target_point["question"])
         elif not missing:
             status = "mastered"
             target_point = None
@@ -840,6 +890,10 @@ class TeachBackPlatform:
             response_text = self._compose_response(assessment, target_point["question"])
 
         source_cards = self._sources_for_turn(lesson, assessment["supported_points"], target_point)
+        citations_valid = all(
+            source.get("id") in {row["id"] for row in lesson["sources"]}
+            for source in source_cards
+        )
         metadata = {
             "status": status,
             "progress": progress,
@@ -851,6 +905,10 @@ class TeachBackPlatform:
             "model": selected_model,
             "confidence": assessment.get("confidence", 0.0),
             "intent": assessment.get("intent", "teachback_answer"),
+            "failure_streak": failure_streak,
+            "target_point_id": target_point["id"] if target_point else None,
+            "diagnosis": diagnosis,
+            "citations_valid": citations_valid,
         }
         assistant_message = self.store.add_message(
             session_id, "assistant", response_text, metadata
@@ -889,8 +947,10 @@ class TeachBackPlatform:
             "covered_points": covered,
             "missing_points": missing,
             "misconceptions": assessment["misconceptions"],
+            "diagnosis": diagnosis,
             "agent_response": response_text,
             "source_cards": source_cards,
+            "citations_valid": citations_valid,
             "provider": provider,
             "model": selected_model,
             "message": assistant_message,
@@ -911,6 +971,8 @@ class TeachBackPlatform:
             return "help"
         if any(re.search(pattern, text) for pattern in self.LEARNING_REQUEST_PATTERNS):
             return "learning_request"
+        if any(re.search(pattern, text) for pattern in self.SOURCE_REQUEST_PATTERNS):
+            return "source_request"
         if any(re.search(pattern, text) for pattern in self.QUESTION_PATTERNS) or "?" in content:
             return "clarification_question"
         if any(re.search(pattern, text) for pattern in self.SOCIAL_PATTERNS):
@@ -923,6 +985,20 @@ class TeachBackPlatform:
             for token in re.findall(r"[a-z0-9]+", normalize_text(value))
             if len(token) >= 3 and token not in self.ROUTING_STOP_WORDS
         }
+
+    @staticmethod
+    def _recent_failure_streak(messages: list[dict[str, Any]]) -> int:
+        streak = 0
+        for message in reversed(messages):
+            if message.get("role") != "assistant":
+                continue
+            metadata = message.get("metadata", {})
+            diagnosis_type = metadata.get("diagnosis", {}).get("type")
+            if diagnosis_type in {"misconception", "insufficient"}:
+                streak += 1
+                continue
+            break
+        return streak
 
     def _best_point_for_text(
         self,
@@ -972,7 +1048,9 @@ class TeachBackPlatform:
         model_feedback = str((assessment or {}).get("feedback", "")).strip()
         model_question = str((assessment or {}).get("next_question", "")).strip()
 
-        if model_feedback:
+        if intent == "source_request":
+            response_text = ""
+        elif model_feedback:
             response_text = self._compose_response(
                 {"feedback": model_feedback, "next_question": model_question},
                 target_point["question"],
@@ -1013,7 +1091,46 @@ class TeachBackPlatform:
         source_cards = (
             []
             if intent in {"social", "unrelated"}
-            else self._sources_for_turn(lesson, [], target_point)
+            else self._sources_for_turn(
+                lesson,
+                [],
+                target_point,
+                include_transcript_quotes=intent == "source_request",
+            )
+        )
+        if intent == "source_request":
+            transcript_sources = [
+                source for source in source_cards if source.get("type") == "transcript"
+            ]
+            if transcript_sources:
+                citations = []
+                for source in transcript_sources[:2]:
+                    excerpt = source.get("quote") or source["paraphrase"]
+                    label = "trích đoạn" if source.get("quote") else "diễn giải"
+                    citations.append(
+                        f"[{source['id']}] ({source['file']}, {source['locator']}) — "
+                        f"{label}: “{excerpt}”"
+                    )
+                response_text = (
+                    "Có. Đây là nguồn transcript đúng với ý đang học:\n\n"
+                    + "\n\n".join(citations)
+                    + "\n\nMình chỉ hiển thị đoạn ngắn đúng locator, không đưa toàn bộ transcript."
+                )
+            else:
+                response_text = (
+                    "Ý này hiện chỉ có nguồn slide hoặc diễn giải đã đăng ký, chưa có đoạn "
+                    "transcript tương ứng trong catalog. Mình sẽ không tự tạo trích dẫn."
+                )
+        diagnosis = {
+            "type": intent,
+            "reasons": [
+                "Đây là lượt điều khiển hội thoại, không dùng để cộng hoặc trừ mastery."
+            ],
+            "target_point_id": target_point["id"],
+        }
+        citations_valid = all(
+            source.get("id") in {row["id"] for row in lesson["sources"]}
+            for source in source_cards
         )
         metadata = {
             "status": status,
@@ -1026,6 +1143,8 @@ class TeachBackPlatform:
             "provider": provider,
             "model": model,
             "confidence": (assessment or {}).get("confidence", 1.0),
+            "diagnosis": diagnosis,
+            "citations_valid": citations_valid,
         }
         assistant_message = self.store.add_message(
             session["id"], "assistant", response_text, metadata
@@ -1066,8 +1185,10 @@ class TeachBackPlatform:
             "covered_points": covered,
             "missing_points": missing,
             "misconceptions": session["misconceptions"],
+            "diagnosis": diagnosis,
             "agent_response": response_text,
             "source_cards": source_cards,
+            "citations_valid": citations_valid,
             "provider": provider,
             "model": model,
             "message": assistant_message,
@@ -1111,6 +1232,32 @@ class TeachBackPlatform:
     def _point_by_id(lesson: dict[str, Any], point_id: str) -> dict[str, Any]:
         return next(point for point in lesson["points"] if point["id"] == point_id)
 
+    def _misconception_target(
+        self,
+        lesson: dict[str, Any],
+        content: str,
+        reasons: list[str],
+        missing: list[str],
+    ) -> dict[str, Any]:
+        """Map a diagnosed misconception to the point it actually conflicts with."""
+        text = normalize_text(content)
+        normalized_reasons = " ".join(normalize_text(reason) for reason in reasons)
+        for row in lesson.get("misconceptions", []):
+            signals = [normalize_text(signal) for signal in row.get("signals", [])]
+            explanation = normalize_text(str(row.get("explanation", "")))
+            if any(contains_phrase(text, signal) for signal in signals) or (
+                explanation and explanation in normalized_reasons
+            ):
+                conflicts = [
+                    point_id
+                    for point_id in row.get("conflicts_with", [])
+                    if point_id in {point["id"] for point in lesson["points"]}
+                ]
+                if conflicts:
+                    return self._point_by_id(lesson, conflicts[0])
+        fallback_id = missing[0] if missing else lesson["points"][-1]["id"]
+        return self._point_by_id(lesson, fallback_id)
+
     @staticmethod
     def _compose_response(assessment: dict[str, Any], fallback_question: str) -> str:
         feedback = str(assessment.get("feedback", "")).strip()
@@ -1127,10 +1274,26 @@ class TeachBackPlatform:
             normalized_signals = [normalize_text(signal) for signal in point.get("signals", [])]
             if any(contains_phrase(text, signal) for signal in normalized_signals):
                 supported.append(point["id"])
+        misconception_rows = []
+        for row in lesson.get("misconceptions", []):
+            signals = [normalize_text(signal) for signal in row.get("signals", [])]
+            if any(contains_phrase(text, signal) for signal in signals):
+                misconception_rows.append(row)
+        misconceptions = [
+            str(row.get("explanation") or row.get("claim") or "Có một mệnh đề chưa đúng.")
+            for row in misconception_rows
+        ]
+        conflicting_points = {
+            point_id
+            for row in misconception_rows
+            for point_id in row.get("conflicts_with", [])
+        }
+        supported = [point_id for point_id in supported if point_id not in conflicting_points]
         explicit_outside = any(re.search(pattern, text) for pattern in self.OUTSIDE_PATTERNS)
         out_of_scope = bool(explicit_outside and not supported)
         insufficient = bool(
             not out_of_scope
+            and not misconceptions
             and (
                 word_count <= 3
                 or text in {"khong biet", "chua ro", "khong nho"}
@@ -1142,7 +1305,9 @@ class TeachBackPlatform:
         )
         feedback = ""
         next_question = ""
-        if out_of_scope:
+        if misconceptions:
+            feedback = "Chỗ chưa đúng là: " + " ".join(misconceptions)
+        elif out_of_scope:
             feedback = "Mình chưa thấy nội dung liên quan tới mục tiêu của bài học."
         elif insufficient:
             feedback = "Câu trả lời còn quá ngắn để đối chiếu với rubric."
@@ -1159,7 +1324,7 @@ class TeachBackPlatform:
             "supported_points": supported,
             "out_of_scope": out_of_scope,
             "insufficient": insufficient,
-            "misconceptions": [],
+            "misconceptions": misconceptions,
             "confidence": 0.55,
             "feedback": feedback,
             "next_question": next_question,
@@ -1171,6 +1336,8 @@ class TeachBackPlatform:
         lesson: dict[str, Any],
         supported_points: list[str],
         target_point: dict[str, Any] | None,
+        *,
+        include_transcript_quotes: bool = False,
     ) -> list[dict[str, Any]]:
         source_ids: list[str] = []
         for point in lesson["points"]:
@@ -1180,7 +1347,33 @@ class TeachBackPlatform:
             source_ids.extend(target_point.get("source_ids", [])[:2])
         source_map = {source["id"]: source for source in lesson["sources"]}
         unique_ids = list(dict.fromkeys(source_ids))[:3]
-        return [source_map[source_id] for source_id in unique_ids if source_id in source_map]
+        sources = [dict(source_map[source_id]) for source_id in unique_ids if source_id in source_map]
+        if include_transcript_quotes:
+            for source in sources:
+                quote = self._transcript_excerpt(source)
+                if quote:
+                    source["quote"] = quote
+        return sources
+
+    @staticmethod
+    def _transcript_excerpt(source: dict[str, Any], max_chars: int = 360) -> str | None:
+        """Return one allow-listed transcript segment, never a whole transcript."""
+        if source.get("type") != "transcript":
+            return None
+        filename = Path(str(source.get("file", ""))).name
+        locator = str(source.get("locator", "")).strip()
+        if not filename or not re.fullmatch(r"T\d{2}-\d{3}", locator):
+            return None
+        candidate = (TRANSCRIPT_DIR / filename).resolve()
+        transcript_root = TRANSCRIPT_DIR.resolve()
+        if candidate.parent != transcript_root or not candidate.is_file():
+            return None
+        marker = f"**[{locator}]**"
+        for line in candidate.read_text(encoding="utf-8").splitlines():
+            if line.startswith(marker):
+                excerpt = line[len(marker):].strip()
+                return excerpt if len(excerpt) <= max_chars else excerpt[: max_chars - 1].rstrip() + "…"
+        return None
 
     def _decorate_session(
         self, session: dict[str, Any], lesson: dict[str, Any]

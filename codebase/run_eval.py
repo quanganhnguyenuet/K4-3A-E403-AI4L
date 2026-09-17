@@ -1,4 +1,4 @@
-"""Run all 20 D3 golden cases and write auditable result artifacts."""
+"""Run the D3 golden set and write auditable, per-run result artifacts."""
 
 from __future__ import annotations
 
@@ -24,6 +24,8 @@ EVAL_DIR = REPO_ROOT / "eval"
 DEFAULT_GOLDEN = EVAL_DIR / "golden_set.json"
 DEFAULT_RESULTS_JSONL = EVAL_DIR / "results.jsonl"
 DEFAULT_REPORT = EVAL_DIR / "run_results.md"
+DEFAULT_RUNS_DIR = EVAL_DIR / "runs"
+DEFAULT_RUN_HISTORY = EVAL_DIR / "run_history.jsonl"
 
 
 def question_is_leak_free(response: str) -> bool:
@@ -45,6 +47,23 @@ def score_case(case: dict[str, Any], actual: dict[str, Any], knowledge: Knowledg
     expected_mastery_complete = bool(
         case.get("expected_mastery_complete", case["expected_action"] == "COMPLETE_SESSION")
     )
+    diagnosis = actual.get("diagnosis")
+    diagnosis_ids = {
+        row.get("id")
+        for row in (diagnosis or {}).get("entries", [])
+        if isinstance(row, dict)
+    }
+    grounded_claims = actual.get("grounded_claims", [])
+    grounded_point_ids = {
+        row.get("point_id") for row in grounded_claims if isinstance(row, dict)
+    }
+    grounded_source_ids = {
+        source_id
+        for row in grounded_claims
+        if isinstance(row, dict)
+        for source_id in row.get("source_ids", [])
+    }
+    diagnosed_supported = set((diagnosis or {}).get("supported_points", []))
 
     checks = {
         "status": actual["status"] == case["expected_status"],
@@ -57,12 +76,27 @@ def score_case(case: dict[str, Any], actual: dict[str, Any], knowledge: Knowledg
         "citations_valid": bool(actual["citations_valid"])
         and actual_evidence <= set(knowledge.sources),
         "answer_leak_free": question_is_leak_free(actual["agent_response"]),
+        "diagnosis_present": isinstance(diagnosis, dict) and bool(diagnosis.get("type")),
+        "misconception_explained": (
+            not expected_misconceptions
+            or (
+                diagnosis.get("type") == "misconception"
+                and expected_misconceptions <= diagnosis_ids
+                and all(row.get("why_wrong") for row in diagnosis.get("entries", []))
+            )
+        ) if isinstance(diagnosis, dict) else not expected_misconceptions,
+        "correct_answer_grounded": (
+            not diagnosed_supported or diagnosed_supported <= grounded_point_ids
+        ),
+        "grounded_claim_sources_valid": grounded_source_ids <= set(knowledge.sources),
     }
     failures = [name for name, passed in checks.items() if not passed]
     return {
         "id": case["id"],
         "taxonomy_layer": case["taxonomy_layer"],
+        "input": case["input"],
         "passed": not failures,
+        "accuracy": 1.0 if not failures else 0.0,
         "failed_checks": failures,
         "checks": checks,
         "expected": {
@@ -75,6 +109,9 @@ def score_case(case: dict[str, Any], actual: dict[str, Any], knowledge: Knowledg
             "required_evidence_any": case.get("required_evidence_any", []),
         },
         "actual": {
+            "session_id": actual.get("session_id"),
+            "turn": actual.get("turn"),
+            "provider": actual.get("provider"),
             "status": actual["status"],
             "covered_points": actual["covered_points"],
             "missing_points": actual["missing_points"],
@@ -84,6 +121,9 @@ def score_case(case: dict[str, Any], actual: dict[str, Any], knowledge: Knowledg
             "evidence_source_ids": actual["evidence_source_ids"],
             "agent_response": actual["agent_response"],
             "progress": actual["progress"],
+            "diagnosis": diagnosis,
+            "recovery_card": actual.get("recovery_card"),
+            "grounded_claims": grounded_claims,
         },
     }
 
@@ -121,7 +161,7 @@ def write_report(
     if provider_name == "offline_rule_baseline":
         lines.extend(
             [
-                "> **Lưu ý:** Đây là lượt chạy baseline bằng luật cục bộ vì môi trường chưa có `OPENAI_API_KEY`. "
+                "> **Lưu ý:** Đây là lượt chạy baseline bằng luật cục bộ, không gọi API và không phát sinh chi phí. "
                 "Kết quả này xác minh harness, retrieval, citation và runner; không được trình bày như kết quả model AI thật. "
                 "Chạy lại với `--provider openai` trước video CP3.",
                 "",
@@ -147,7 +187,7 @@ def write_report(
     lines.extend(
         [
             "",
-            "## Chi tiết 20 ca",
+            f"## Chi tiết {len(results)} ca",
             "",
             "| Case | Lớp | Kết quả | Status thực tế | Action thực tế | Complete | Kiểm tra sai |",
             "|---|---|---|---|---|---|---|",
@@ -177,6 +217,10 @@ def write_report(
                 "evidence_hit": "Retriever chưa đưa ra một nguồn nằm trong nhóm nguồn mong đợi.",
                 "citations_valid": "Citation không nằm trong source registry hoặc ngoài kết quả retrieval.",
                 "answer_leak_free": "Câu hỏi có dấu hiệu tiết lộ trực tiếp đáp án.",
+                "diagnosis_present": "Kết quả thiếu chẩn đoán có cấu trúc để audit.",
+                "misconception_explained": "Agent nhận diện sai nhưng chưa nêu rõ vì sao sai.",
+                "correct_answer_grounded": "Ý đúng chưa đi kèm evidence đã đăng ký.",
+                "grounded_claim_sources_valid": "Nguồn cho claim đúng nằm ngoài source registry.",
             }.get(check, "Kiểm tra không đạt.")
             lines.append(f"- **{check}: {count} ca.** {explanation}")
 
@@ -196,7 +240,7 @@ def write_report(
             "",
             "## Quality bar đề xuất",
             "",
-            "- Ít nhất **16/20 ca đạt (80%)**.",
+            f"- Ít nhất **{max(1, int(len(results) * 0.85 + 0.999))}/{len(results)} ca đạt (85%)**.",
             "- **0 false-mastered** trên các ca có misconception.",
             "- **100% citation hợp lệ** và nằm trong kết quả retrieval của lượt đó.",
             "- Không kết thúc phiên khi còn misconception chưa được xử lý.",
@@ -208,19 +252,21 @@ def write_report(
 
 def validate_dataset(dataset: dict[str, Any]) -> None:
     cases = dataset.get("cases")
-    if not isinstance(cases, list) or len(cases) != 20:
+    if not isinstance(cases, list) or len(cases) < 20:
         raise ValueError(
-            f"Golden set must have exactly 20 cases, got {len(cases) if isinstance(cases, list) else 0}"
+            f"Golden set must have at least 20 cases, got {len(cases) if isinstance(cases, list) else 0}"
         )
+    if dataset.get("case_count") != len(cases):
+        raise ValueError("case_count must equal the number of cases")
     ids = [case.get("id") for case in cases]
     if len(set(ids)) != len(ids):
         raise ValueError("Golden set case IDs must be unique")
     expected_layers = {"L1_INPUT", "L2_SEMANTIC", "L3_GROUNDING", "L4_DIALOGUE"}
     layer_counts = Counter(case.get("taxonomy_layer") for case in cases)
     if set(layer_counts) != expected_layers or any(
-        layer_counts[layer] != 5 for layer in expected_layers
+        layer_counts[layer] < 5 for layer in expected_layers
     ):
-        raise ValueError(f"Expected 5 cases per taxonomy layer, got {dict(layer_counts)}")
+        raise ValueError(f"Expected at least 5 cases per taxonomy layer, got {dict(layer_counts)}")
     expected_points = {"K1", "K2", "K3", "K4"}
     for case in cases:
         covered = set(case.get("expected_covered", []))
@@ -239,14 +285,21 @@ def main() -> None:
     parser.add_argument("--golden", type=Path, default=DEFAULT_GOLDEN)
     parser.add_argument("--results-jsonl", type=Path, default=DEFAULT_RESULTS_JSONL)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
+    parser.add_argument("--archive-dir", type=Path, default=DEFAULT_RUNS_DIR)
+    parser.add_argument("--run-history", type=Path, default=DEFAULT_RUN_HISTORY)
     args = parser.parse_args()
 
-    started_at = datetime.now(timezone.utc).isoformat()
+    started = datetime.now(timezone.utc)
+    started_at = started.isoformat()
     dataset = json.loads(args.golden.read_text(encoding="utf-8"))
     validate_dataset(dataset)
     cases = dataset["cases"]
 
-    logger = AuditLogger()
+    version_slug = str(dataset.get("version", "unknown")).replace(".", "_")
+    run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}_{args.provider}_v{version_slug}"
+    args.archive_dir.mkdir(parents=True, exist_ok=True)
+    archived_model_log = args.archive_dir / f"{run_id}_model_calls.jsonl"
+    logger = AuditLogger(archived_model_log)
     provider = provider_from_name(args.provider, logger=logger)
     knowledge = KnowledgeBase()
     agent = TeachBackAgent(provider=provider, knowledge=knowledge, logger=logger)
@@ -254,7 +307,9 @@ def main() -> None:
     for index, case in enumerate(cases, start=1):
         print(f"[{index:02d}/{len(cases)}] {case['id']} ({case['taxonomy_layer']})")
         actual = agent.run_turn(case["input"], case.get("previous_state"))
-        results.append(score_case(case, actual, knowledge))
+        row = score_case(case, actual, knowledge)
+        row["run_id"] = run_id
+        results.append(row)
 
     args.results_jsonl.parent.mkdir(parents=True, exist_ok=True)
     with args.results_jsonl.open("w", encoding="utf-8") as handle:
@@ -268,10 +323,62 @@ def main() -> None:
         dataset_version=str(dataset.get("version", "unknown")),
     )
 
+    archived_results = args.archive_dir / f"{run_id}_results.jsonl"
+    archived_report = args.archive_dir / f"{run_id}_report.md"
+    archived_summary = args.archive_dir / f"{run_id}_summary.json"
+    with archived_results.open("w", encoding="utf-8") as handle:
+        for row in results:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    write_report(
+        archived_report,
+        provider_name=provider.name,
+        results=results,
+        started_at=started_at,
+        dataset_version=str(dataset.get("version", "unknown")),
+    )
+
     passed = sum(1 for row in results if row["passed"])
+    accuracy_by_taxonomy = {}
+    for layer in sorted({row["taxonomy_layer"] for row in results}):
+        layer_rows = [row for row in results if row["taxonomy_layer"] == layer]
+        layer_passed = sum(1 for row in layer_rows if row["passed"])
+        accuracy_by_taxonomy[layer] = {
+            "passed": layer_passed,
+            "total": len(layer_rows),
+            "accuracy": round(layer_passed / len(layer_rows), 4),
+        }
+    summary = {
+        "run_id": run_id,
+        "started_at": started_at,
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "dataset_version": str(dataset.get("version", "unknown")),
+        "provider": provider.name,
+        "model": getattr(provider, "model", "deterministic-rules-v1"),
+        "total": len(results),
+        "passed": passed,
+        "failed": len(results) - passed,
+        "pass_rate": round(passed / len(results), 4),
+        "accuracy_by_taxonomy": accuracy_by_taxonomy,
+        "failed_check_counts": dict(
+            Counter(check for row in results for check in row["failed_checks"])
+        ),
+        "artifacts": {
+            "results_jsonl": str(archived_results),
+            "report": str(archived_report),
+            "model_log": str(archived_model_log),
+            "run_history": str(args.run_history),
+        },
+    }
+    archived_summary.write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    args.run_history.parent.mkdir(parents=True, exist_ok=True)
+    with args.run_history.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(summary, ensure_ascii=False) + "\n")
     print(f"Completed: {passed}/{len(results)} passed ({passed / len(results) * 100:.1f}%)")
     print(f"Report: {args.report}")
     print(f"Detailed results: {args.results_jsonl}")
+    print(f"Archived run: {archived_summary}")
 
 
 if __name__ == "__main__":
