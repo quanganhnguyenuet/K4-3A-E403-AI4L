@@ -174,11 +174,14 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             normalized_explanation,
             (r"\bvi du\b", r"\bchang han\b", r"\bgiong nhu\b"),
         )
+        # K1-K4 đã được xác nhận đủ ở các lượt trước khi tới đây (đó là lý do
+        # trạng thái là "mastered"/awaiting_transfer) — không bắt câu ví dụ
+        # chuyển giao phải khớp lại đúng khuôn regex K2 một lần nữa, chỉ cần
+        # còn tín hiệu liên quan (K2/K3/K4) và có nêu ví dụ, không lặp hiểu sai.
         if (
             bool(state.get("awaiting_transfer"))
             and has_example_marker
-            and "K2" in explicit_points
-            and bool(explicit_points & {"K3", "K4"})
+            and bool(explicit_points & {"K2", "K3", "K4"})
             and not assessment["misconceptions"]
         ):
             assessment["transfer_passed"] = True
@@ -200,6 +203,11 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         current_supported = {
             point_id for point_id, verdict in verdict_by_point.items() if verdict == "supported"
         } | explicit_points
+        if assessment.get("copied_source"):
+            # Một câu chép gần nguyên văn nguồn không phải bằng chứng đã hiểu —
+            # đúng not_mastered_when trong knowledge JSON. Không cộng điểm mới
+            # từ lượt này, chỉ giữ nguyên các điểm đã xác nhận từ trước.
+            current_supported = set()
         covered = set(covered_points) | current_supported
 
         unresolved = set(unresolved_misconceptions)
@@ -466,10 +474,24 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
     graph.add_edge("assess", "validate_and_ground")
     graph.add_edge("validate_and_ground", "merge_coverage_and_regression")
     graph.add_edge("merge_coverage_and_regression", "decide_route")
+
+    def route_after_decide(state: TeachBackState) -> str:
+        # OUT_OF_SCOPE luôn dùng câu trả lời cố định để nhắc lại đúng chủ đề —
+        # không giao cho AI tự soạn, vì trước đó nó không được cấp chỉ dẫn nào
+        # về việc phải nói rõ input đang lạc đề (khác với SHOW_RECOVERY/
+        # COMPLETE_SESSION, vốn đã đi qua đường này từ trước).
+        if state.get("action") == "OUT_OF_SCOPE":
+            return "apply_static_fallback"
+        return "retrieve_evidence" if state.get("target_gap") else "draft_question"
+
     graph.add_conditional_edges(
         "decide_route",
-        lambda s: "retrieve_evidence" if s.get("target_gap") else "draft_question",
-        {"retrieve_evidence": "retrieve_evidence", "draft_question": "draft_question"},
+        route_after_decide,
+        {
+            "retrieve_evidence": "retrieve_evidence",
+            "draft_question": "draft_question",
+            "apply_static_fallback": "apply_static_fallback",
+        },
     )
     graph.add_conditional_edges(
         "retrieve_evidence",
@@ -520,3 +542,16 @@ class GraphSessionRunner:
                 config=config,
             )
         return output["result"]
+
+    def get_state(self, session_id: str) -> dict[str, Any] | None:
+        """Read back the last persisted turn result without calling the model.
+
+        Returns the same ``result`` shape ``run_turn`` returns, taken from the
+        checkpointed state, or ``None`` if this thread has no history yet.
+        """
+        config = {"configurable": {"thread_id": session_id}}
+        with self._lock:
+            snapshot = self._graph.get_state(config)
+        if not snapshot or not snapshot.values:
+            return None
+        return snapshot.values.get("result")
