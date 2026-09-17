@@ -20,14 +20,15 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
-from learning_platform import ConversationStore, LessonCatalog, TeachBackPlatform, runtime_info
+from lesson_engine import TeachBackWebEngine
+from platform_runtime import ConversationStore, LessonCatalog, runtime_info
 
 
 CODEBASE_DIR = Path(__file__).resolve().parent
 UI_DIR = CODEBASE_DIR / "ui"
 
 
-def make_handler(platform: TeachBackPlatform, default_provider: str = "auto"):
+def make_handler(platform: TeachBackWebEngine, default_provider: str = "auto"):
     resolved_provider = (
         runtime_info()["default_provider"] if default_provider == "auto" else default_provider
     )
@@ -225,7 +226,7 @@ def main() -> None:
     parser.add_argument("--provider", choices=("auto", "openai", "offline"), default="auto")
     args = parser.parse_args()
 
-    platform = TeachBackPlatform(
+    platform = TeachBackWebEngine(
         catalog=LessonCatalog(args.catalog) if args.catalog else None,
         store=ConversationStore(args.db) if args.db else None,
     )

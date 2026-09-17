@@ -10,7 +10,13 @@ from pathlib import Path
 CODEBASE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CODEBASE))
 
-from agent_core import AuditLogger, KnowledgeBase, OfflineRuleProvider, TeachBackAgent  # noqa: E402
+from agent_core import (  # noqa: E402
+    AuditLogger,
+    KnowledgeBase,
+    OfflineRuleProvider,
+    OpenAIResponsesProvider,
+    TeachBackAgent,
+)
 
 
 class TeachBackAgentTests(unittest.TestCase):
@@ -29,6 +35,102 @@ class TeachBackAgentTests(unittest.TestCase):
             result = knowledge.retrieve_evidence(point_id)
             self.assertTrue(result["sources"])
             self.assertTrue(all(row["id"] in knowledge.sources for row in result["sources"]))
+
+    def test_question_drafter_receives_learner_wording_and_natural_style_rules(self) -> None:
+        provider = OpenAIResponsesProvider(api_key="sk-test", model="test-model")
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"question": "Bạn đang vướng ở chỗ phân biệt usage và outcome; thử nghĩ xem người học thật sự cần đạt kết quả gì?"}
+
+        provider._request_structured = fake_request  # type: ignore[method-assign]
+        result = provider.draft_question(
+            target_gap="K1",
+            action="NARROW_QUESTION",
+            misconception=None,
+            rubric_excerpt={
+                "task": "Chọn metric phù hợp",
+                "learner_message": "Mình vẫn chưa hình dung metric giá trị là gì",
+                "previous_agent_response": "Metric nào cho thấy người dùng nhận được giá trị?",
+                "support_stage": "narrowed_question",
+                "ground_truth": "Outcome phản ánh giá trị thật.",
+                "accepted_signals": ["outcome"],
+            },
+            feedback=None,
+            metadata={"session_id": "style-test", "turn": 2},
+        )
+
+        self.assertIn("learner_message: Mình vẫn chưa hình dung", captured["input_text"])
+        self.assertIn("previous_agent_response: Metric nào", captured["input_text"])
+        self.assertIn("one or two concise sentences", captured["instructions"])
+        self.assertEqual(result["draft_question"].count("?"), 1)
+
+    def test_recovery_drafter_allows_a_natural_explanation_without_a_question(self) -> None:
+        provider = OpenAIResponsesProvider(api_key="sk-test", model="test-model")
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"question": "Mình nói thẳng ý cốt lõi nhé: model dự đoán token kế tiếp theo xác suất, chứ không mặc định tra cứu sự thật."}
+
+        provider._request_structured = fake_request  # type: ignore[method-assign]
+        result = provider.draft_question(
+            target_gap="K1",
+            action="SHOW_RECOVERY",
+            misconception=None,
+            rubric_excerpt={
+                "task": "Giải thích cách LLM hoạt động",
+                "learner_message": "Mình bí rồi, bạn trả lời giúp mình",
+                "ground_truth": "LLM dự đoán token tiếp theo theo xác suất.",
+                "recovery_text": "Bắt đầu từ token và xác suất.",
+                "example_starting_points": ["dự đoán token tiếp theo"],
+                "source_ids": ["D1-S10"],
+            },
+            feedback=None,
+            metadata={"session_id": "recovery-style-test", "turn": 4},
+        )
+
+        self.assertIn("a question is not required", captured["instructions"])
+        self.assertEqual(result["draft_question"].count("?"), 0)
+
+    def test_contextual_writer_handles_redirect_and_recovery_before_static_fallback(self) -> None:
+        temp_dir = Path(tempfile.mkdtemp(prefix="d3-context-writer-test-"))
+        logger = AuditLogger(temp_dir / "audit.jsonl")
+
+        class ContextualProvider(OfflineRuleProvider):
+            def __init__(self):
+                super().__init__(logger=logger)
+                self.actions: list[str] = []
+
+            def draft_question(self, **kwargs):
+                action = kwargs["action"]
+                self.actions.append(action)
+                if action == "OUT_OF_SCOPE":
+                    return {
+                        "draft_question": "Chuyện thời tiết nằm ngoài buổi ôn này; mình quay lại cách LLM tạo câu trả lời nhé."
+                    }
+                if action == "SHOW_RECOVERY":
+                    return {
+                        "draft_question": "Ý cốt lõi là LLM dự đoán token tiếp theo theo xác suất và lặp lại quá trình, chứ không mặc định tra cứu sự thật."
+                    }
+                return {"draft_question": "Bạn thử nói rõ thêm một ý được không?"}
+
+        provider = ContextualProvider()
+        agent = TeachBackAgent(
+            provider=provider,
+            knowledge=KnowledgeBase(),
+            logger=logger,
+        )
+        redirect = agent.run_turn("Dự báo thời tiết ngày mai giúp mình")
+        recovery = agent.run_turn(
+            "Tôi không biết nữa, bạn có thể trả lời tôi",
+            {"last_target_gap": "K1"},
+        )
+
+        self.assertEqual(provider.actions, ["OUT_OF_SCOPE", "SHOW_RECOVERY"])
+        self.assertIn("Chuyện thời tiết", redirect["agent_response"])
+        self.assertIn("dự đoán token tiếp theo", recovery["agent_response"])
 
     def test_complete_explanation_routes_to_transfer(self) -> None:
         result = self.make_agent().run_turn(
@@ -49,7 +151,7 @@ class TeachBackAgentTests(unittest.TestCase):
         self.assertFalse(result["mastery_complete"])
         self.assertEqual(result["diagnosis"]["type"], "misconception")
         self.assertTrue(result["diagnosis"]["entries"][0]["why_wrong"])
-        self.assertIn("Chỗ chưa đúng", result["agent_response"])
+        self.assertIn("kiểm tra lại mệnh đề", result["agent_response"])
 
     def test_repeated_misconception_switches_to_recovery_card(self) -> None:
         result = self.make_agent().run_turn(
@@ -58,13 +160,66 @@ class TeachBackAgentTests(unittest.TestCase):
                 "session_id": "unit-repeated-misconception",
                 "covered_points": ["K1", "K2", "K3"],
                 "unresolved_misconceptions": ["M4"],
-                "attempts_by_gap": {"K4": 1},
+                "attempts_by_gap": {"K4": 3},
             },
         )
         self.assertEqual(result["next_action"], "SHOW_RECOVERY")
         self.assertIsNotNone(result["recovery_card"])
-        self.assertIn("Mình đổi cách giải thích", result["agent_response"])
+        self.assertIn("Mình nói thẳng đáp án nhé", result["agent_response"])
         self.assertTrue(result["evidence_source_ids"])
+
+    def test_direct_answer_request_exits_an_active_misconception_loop(self) -> None:
+        result = self.make_agent().run_turn(
+            "Em chịu rồi, cho em đáp án được không?",
+            {
+                "session_id": "unit-direct-answer",
+                "covered_points": ["K1", "K2", "K3"],
+                "unresolved_misconceptions": ["M4"],
+                "attempts_by_gap": {"K4": 1},
+                "last_target_gap": "K4",
+            },
+        )
+
+        self.assertEqual(result["next_action"], "SHOW_RECOVERY")
+        self.assertIn("Mình nói thẳng đáp án nhé", result["agent_response"])
+        self.assertIn("không tạo bảo đảm đúng tuyệt đối", result["agent_response"])
+
+    def test_natural_can_you_answer_me_phrase_shows_the_answer(self) -> None:
+        result = self.make_agent().run_turn(
+            "Tôi không biết nữa, bạn có thể trả lời tôi",
+            {
+                "session_id": "unit-natural-direct-answer",
+                "last_target_gap": "K1",
+                "attempts_by_gap": {"K1": 1},
+            },
+        )
+
+        self.assertEqual(result["raw_assessment"]["intent"], "request_help")
+        self.assertEqual(result["next_action"], "SHOW_RECOVERY")
+        self.assertIn("Mình nói thẳng đáp án nhé", result["agent_response"])
+        self.assertIn("dự đoán token tiếp theo", result["agent_response"])
+
+    def test_second_and_third_failed_attempts_do_not_leak_full_recovery(self) -> None:
+        agent = self.make_agent()
+        second = agent.run_turn(
+            "Gắn RAG vào là chính xác 100% và không thể bịa.",
+            {"attempts_by_gap": {"K4": 1}},
+        )
+        third = agent.run_turn(
+            "Gắn RAG vào là chính xác 100% và không thể bịa.",
+            {"attempts_by_gap": {"K4": 2}},
+        )
+        self.assertEqual(second["next_action"], "NARROW_QUESTION")
+        self.assertEqual(second["state"]["recovery_stage"], "narrowed_question")
+        self.assertEqual(third["next_action"], "CONTROLLED_HINT")
+        self.assertEqual(third["state"]["recovery_stage"], "controlled_hint")
+
+    def test_generic_absolute_overclaim_is_mapped_to_mitigation_misconception(self) -> None:
+        result = self.make_agent().run_turn(
+            "Fine-tune đúng trên dữ liệu domain thì model luôn đúng và không bao giờ hallucinate."
+        )
+        self.assertIn("M4", result["misconceptions"])
+        self.assertEqual(result["target_gap"], "K4")
 
     def test_explicitly_rejecting_rag_absolutism_resolves_misconception(self) -> None:
         result = self.make_agent().run_turn(
@@ -116,7 +271,7 @@ class TeachBackAgentTests(unittest.TestCase):
             "recommended_action": "ASK_CAUSE",
             "draft_question": "Vì sao câu hợp lý vẫn có thể sai?",
         }
-        validated = TeachBackAgent._validate_assessment(raw, explanation)
+        validated = self.make_agent()._validate_assessment(raw, explanation)
         self.assertEqual(validated["misconceptions"], [])
         self.assertEqual(
             validated["discarded_misconceptions"],

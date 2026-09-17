@@ -23,7 +23,7 @@
           "signals": ["dự đoán token", "đoán token", "token tiếp theo", "phân bố xác suất", "sinh văn bản theo xác suất"],
           "question": "Theo bạn, ở mỗi bước LLM thực sự đang làm gì để tạo ra token tiếp theo?",
           "recovery": "Hãy bắt đầu từ ba từ khóa: token, xác suất và lặp lại.",
-          "source_ids": ["T04-047", "T06-136"]
+          "source_ids": ["D1-S10", "D1-S11", "D1-S12", "T04-047", "T06-136"]
         },
         {
           "id": "K2",
@@ -43,7 +43,7 @@
           "signals": ["dữ liệu thiên lệch", "dữ liệu bị lệch", "knowledge cutoff", "thông tin mới", "context hữu hạn", "thiếu ngữ cảnh"],
           "question": "Ngoài cơ chế sinh token, dữ liệu và context có thể làm model thiếu căn cứ như thế nào?",
           "recovery": "Thử xét ba nguồn rủi ro: dữ liệu huấn luyện, thời điểm cutoff và context hiện có.",
-          "source_ids": ["T06-138", "T06-148", "T06-149"]
+          "source_ids": ["D1-S16", "D1-S20", "T06-138", "T06-148", "T06-149"]
         },
         {
           "id": "K4",
@@ -53,26 +53,64 @@
           "signals": ["rag", "tra nguồn", "trích dẫn", "kiểm chứng", "tool", "không đảm bảo tuyệt đối", "không bảo đảm tuyệt đối"],
           "question": "Bạn sẽ thêm bước nào để giảm rủi ro, và vì sao bước đó vẫn không thể bảo đảm đúng 100%?",
           "recovery": "Nghĩ đến việc bổ sung nguồn, dùng tool và giữ một bước kiểm chứng.",
-          "source_ids": ["T06-139", "T06-148", "D1-S29"]
+          "source_ids": ["D1-S16", "D1-S20", "D1-S29", "T06-139", "T06-148"]
         }
       ],
       "misconceptions": [
         {
-          "id": "M-LLM-1",
+          "id": "M3",
           "claim": "Đặt temperature bằng 0 thì LLM luôn đúng và không thể bịa.",
           "signals": ["temperature bằng 0 thì luôn đúng", "temperature 0 thì không bịa", "temperature bằng 0 sẽ không bao giờ hallucinate"],
           "explanation": "Temperature thấp chỉ làm cách chọn token ổn định hơn; nó không bổ sung tri thức hoặc bước kiểm chứng sự thật.",
+          "socratic_question": "Temperature thấp làm cách chọn token ổn định hơn, nhưng nó có bổ sung sự kiện mà model chưa từng biết không?",
           "conflicts_with": ["K4"]
         },
         {
-          "id": "M-LLM-2",
+          "id": "M4",
           "claim": "Có RAG thì câu trả lời chính xác tuyệt đối.",
           "signals": ["RAG chính xác 100%", "RAG thì không thể bịa", "có RAG là hết hallucination"],
           "explanation": "RAG có thể truy xuất nhầm hoặc dùng nguồn sai, nên chỉ giảm rủi ro chứ không bảo đảm chính xác tuyệt đối.",
+          "socratic_question": "Nếu hệ thống truy xuất nhầm đoạn hoặc tài liệu nguồn vốn đã sai, RAG còn bảo đảm tuyệt đối được không?",
           "conflicts_with": ["K4"]
+        },
+        {
+          "id": "M1",
+          "claim": "LLM luôn tra cứu một cơ sở dữ liệu sự thật trước khi trả lời.",
+          "signals": ["luôn tra database trước khi trả lời", "luôn tra cơ sở dữ liệu sự thật", "database lỗi nên model bịa"],
+          "explanation": "LLM mặc định dự đoán token theo xác suất; chỉ tra nguồn khi hệ thống được nối với retrieval hoặc tool.",
+          "socratic_question": "Nếu model luôn tra một cơ sở dữ liệu sự thật, vì sao đầu ra của nó lại là một phân bố xác suất trên token?",
+          "conflicts_with": ["K1", "K2"]
+        },
+        {
+          "id": "M2",
+          "claim": "LLM cố ý nói dối dù biết đáp án đúng.",
+          "signals": ["LLM cố ý nói dối", "model biết đáp án sai nhưng vẫn nói", "AI lừa để tỏ ra thông minh"],
+          "explanation": "Không cần giả định ý định nói dối: cơ chế sinh phần tiếp nối nghe hợp lý đã đủ tạo ra câu sai.",
+          "socratic_question": "Ta có cần giả định model có ý định nói dối, hay cơ chế sinh phần tiếp nối nghe hợp lý đã đủ giải thích?",
+          "conflicts_with": ["K1", "K2"]
+        },
+        {
+          "id": "M5",
+          "claim": "Hallucination chỉ xảy ra với thông tin mới sau knowledge cutoff.",
+          "signals": ["hallucination chỉ do cutoff", "chỉ thông tin mới mới bị bịa", "dữ liệu cũ luôn đúng"],
+          "explanation": "Hallucination còn có thể đến từ dữ liệu lệch, thiếu bằng chứng trong context hoặc cơ chế sinh xác suất.",
+          "socratic_question": "Ngoài dữ liệu mới, điều gì xảy ra khi dữ liệu huấn luyện lệch hoặc bằng chứng không nằm trong context?",
+          "conflicts_with": ["K1", "K2", "K3"]
+        },
+        {
+          "id": "M6",
+          "claim": "Context càng dài thì model luôn càng chính xác.",
+          "signals": ["context càng dài càng chính xác", "nhét hết tài liệu thì không bịa", "context dài luôn đúng"],
+          "explanation": "Context dài vẫn có thể chứa nhiễu hoặc làm model bỏ sót phần liên quan; nó không tạo bảo đảm chính xác.",
+          "socratic_question": "Nếu context dài chứa nhiễu hoặc làm thông tin liên quan bị bỏ sót, nó còn bảo đảm chính xác được không?",
+          "conflicts_with": ["K3", "K4"]
         }
       ],
       "sources": [
+        {"id": "D1-S10", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 10", "paraphrase": "Transformer tạo phân bố xác suất trên các token ứng viên."},
+        {"id": "D1-S11", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 11", "paraphrase": "Một token được chọn từ phân bố xác suất và nối vào ngữ cảnh."},
+        {"id": "D1-S12", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 12", "paraphrase": "Quá trình dự đoán token tiếp theo được lặp tự hồi quy."},
+        {"id": "D1-S16", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 16", "paraphrase": "Attention và context có giới hạn nên bằng chứng liên quan có thể bị bỏ sót."},
         {"id": "T04-047", "type": "transcript", "file": "transcript-04-clean.md", "locator": "T04-047", "paraphrase": "LLM nối token vừa sinh vào chuỗi rồi tiếp tục dự đoán token kế tiếp."},
         {"id": "T06-136", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-136", "paraphrase": "LLM dự báo token theo xác suất; temperature tác động tới cách chọn token."},
         {"id": "T06-138", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-138", "paraphrase": "Không nên giả định đầu ra luôn đúng; dữ liệu Internet có thể chứa thiên lệch."},

@@ -19,18 +19,15 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 
 from agent_core import (
-    ASSESSMENT_SCHEMA,
-    POINT_PRIORITY,
-    POINT_WEIGHTS,
     CODEBASE_DIR,
     SessionState,
     TeachBackAgent,
-    detect_explicit_points,
     looks_insufficient,
     looks_out_of_scope,
     matches_any,
     normalize_text,
 )
+from turn_policy import classify_turn_intent, recovery_action, requests_direct_answer
 
 MAX_TURNS_PER_SESSION = 20
 SESSION_LIMIT_MESSAGE = (
@@ -48,9 +45,12 @@ class TeachBackState(TypedDict, total=False):
     covered_points: list[str]
     unresolved_misconceptions: list[str]
     attempts_by_gap: dict[str, int]
+    last_target_gap: str | None
+    recovery_stage: str
     awaiting_transfer: bool
     transfer_passed: bool
     mastery_complete: bool
+    last_agent_response: str
     # per-turn working values (explicitly reset every turn, never trusted stale)
     session_limit_hit: bool
     session_limit_reached: bool
@@ -79,9 +79,12 @@ def _session_state_from(state: TeachBackState) -> SessionState:
         covered_points=list(state.get("covered_points", [])),
         unresolved_misconceptions=list(state.get("unresolved_misconceptions", [])),
         attempts_by_gap=dict(state.get("attempts_by_gap", {})),
+        last_target_gap=state.get("last_target_gap"),
+        recovery_stage=str(state.get("recovery_stage", "none")),
         awaiting_transfer=bool(state.get("awaiting_transfer", False)),
         transfer_passed=bool(state.get("transfer_passed", False)),
         mastery_complete=bool(state.get("mastery_complete", False)),
+        last_agent_response=str(state.get("last_agent_response", "")),
     )
 
 
@@ -106,9 +109,11 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             "provider": agent.provider.name,
             "status": "needs_recovery",
             "mastery_complete": False,
-            "progress": sum(POINT_WEIGHTS[p] for p in session_state.covered_points),
+            "progress": sum(agent.knowledge.point_weights[p] for p in session_state.covered_points),
             "covered_points": session_state.covered_points,
-            "missing_points": [p for p in POINT_PRIORITY if p not in session_state.covered_points],
+            "missing_points": [
+                p for p in agent.knowledge.point_ids if p not in session_state.covered_points
+            ],
             "misconceptions": session_state.unresolved_misconceptions,
             "next_action": "SHOW_RECOVERY",
             "target_gap": None,
@@ -146,7 +151,7 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         raw = agent.provider.assess(
             prompt=prompt,
             explanation=explanation,
-            schema=ASSESSMENT_SCHEMA,
+            schema=agent.assessment_schema,
             metadata={
                 "session_id": session_state.session_id,
                 "turn": session_state.turn,
@@ -159,16 +164,33 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         explanation = state["explanation"]
         assessment = agent._validate_assessment(state["raw_assessment"], explanation)
 
-        explicit_points = detect_explicit_points(explanation)
+        rule_intent = classify_turn_intent(explanation)
+        if rule_intent != "teachback_answer":
+            assessment["intent"] = rule_intent
+        intent = assessment.get("intent", "teachback_answer")
+
+        explicit_points = agent._detect_points(explanation)
         assessment["harness_supported_points"] = sorted(explicit_points)
-        deterministic_insufficient = looks_insufficient(explanation)
-        deterministic_out_of_scope = looks_out_of_scope(explanation)
+        deterministic_insufficient = intent == "request_help" or looks_insufficient(explanation)
+        deterministic_out_of_scope = intent in {
+            "out_of_scope",
+            "authority_attack",
+            "change_topic",
+        } or looks_out_of_scope(explanation, domain_patterns=agent.out_of_scope_patterns)
         if deterministic_out_of_scope:
             assessment["out_of_scope"] = True
             assessment["insufficient_input"] = False
         elif deterministic_insufficient:
             assessment["out_of_scope"] = False
             assessment["insufficient_input"] = True
+        elif matches_any(normalize_text(explanation), agent.out_of_scope_patterns):
+            # A positive lesson-domain-vocabulary hit is strong evidence the
+            # turn IS on-topic. The model can still over-flag out_of_scope on
+            # a vague-but-on-topic opener (e.g. "tôi muốn ôn về LLM") that
+            # explains nothing yet — that is a weak/incomplete answer, not an
+            # unrelated one, so never trust the model's out_of_scope=true
+            # here without a deterministic signal backing it.
+            assessment["out_of_scope"] = False
         assessment["copied_source"] = bool(
             assessment["copied_source"] or agent.knowledge.is_probable_copy(explanation)
         )
@@ -207,7 +229,11 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         current_supported = {
             point_id for point_id, verdict in verdict_by_point.items() if verdict == "supported"
         } | explicit_points
-        if assessment.get("copied_source") or assessment.get("insufficient_input"):
+        if (
+            assessment.get("intent") != "teachback_answer"
+            or assessment.get("copied_source")
+            or assessment.get("insufficient_input")
+        ):
             # Một câu chép gần nguyên văn nguồn không phải bằng chứng đã hiểu —
             # và một input không đủ nội dung cũng không phải bằng chứng. Không
             # cộng điểm mới từ lượt này, chỉ giữ các điểm đã xác nhận từ trước.
@@ -224,7 +250,8 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         unresolved.update(assessment["misconceptions"])
         for misconception in unresolved:
             for conflict in agent.knowledge.misconceptions[misconception].get("conflicts_with", []):
-                covered.discard(conflict)
+                if conflict not in current_supported:
+                    covered.discard(conflict)
 
         required = agent.knowledge.required_point_ids
         missing = [point_id for point_id in required if point_id not in covered]
@@ -234,7 +261,7 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             attempts_by_gap.pop(point_id, None)
 
         update: dict[str, Any] = {
-            "covered": [p for p in POINT_PRIORITY if p in covered],
+            "covered": [p for p in agent.knowledge.point_ids if p in covered],
             "missing": missing,
             "unresolved": sorted(unresolved),
             "first_misconception": first_misconception,
@@ -257,8 +284,25 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         attempts_by_gap = dict(state.get("attempts_by_gap", {}))
 
         update: dict[str, Any] = {}
-        if assessment["out_of_scope"]:
+        intent = assessment.get("intent", "teachback_answer")
+        direct_answer_requested = requests_direct_answer(state.get("explanation", ""))
+        recovery_stage = "none"
+        if intent == "authority_attack":
+            status, action, target_gap = "authority_attack", "BOUNDARY_RESPONSE", None
+        elif intent in {"out_of_scope", "change_topic"} or assessment["out_of_scope"]:
             status, action, target_gap = "out_of_scope", "OUT_OF_SCOPE", None
+        elif intent in {"clarification_question", "source_request", "social", "session_setup"}:
+            status = "coaching"
+            target_gap = assessment["recommended_gap"] or (missing[0] if missing else "K2")
+            if intent == "source_request":
+                action = "SHOW_RECOVERY"
+                recovery_stage = "knowledge_recovery"
+            elif target_gap == "K1":
+                action = "ASK_MECHANISM"
+            elif target_gap in {"K2", "K3"}:
+                action = "ASK_CAUSE"
+            else:
+                action = "ASK_MITIGATION"
         elif assessment["copied_source"]:
             status = "copied_source"
             action = "ASK_REPHRASE"
@@ -267,13 +311,25 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             status = "misconception"
             target_gap = agent.knowledge.misconception_gap(first_misconception or "M1")
             attempts = attempts_by_gap.get(target_gap, 0) + 1
+            if direct_answer_requested:
+                attempts = max(attempts, 4)
             attempts_by_gap[target_gap] = attempts
             update["attempts_by_gap"] = attempts_by_gap
-            action = "SHOW_RECOVERY" if attempts >= 2 else "SOCRATIC_CORRECTION"
+            action, recovery_stage = recovery_action(attempts, misconception=True)
         elif assessment["insufficient_input"]:
             status = "needs_recovery"
-            action = "SHOW_RECOVERY"
-            target_gap = assessment["recommended_gap"] or (missing[0] if missing else "K1")
+            previous_gap = state.get("last_target_gap")
+            target_gap = (
+                previous_gap
+                if direct_answer_requested and previous_gap in missing
+                else assessment["recommended_gap"] or (missing[0] if missing else "K1")
+            )
+            attempts = attempts_by_gap.get(target_gap, 0) + 1
+            if direct_answer_requested:
+                attempts = max(attempts, 4)
+            attempts_by_gap[target_gap] = attempts
+            update["attempts_by_gap"] = attempts_by_gap
+            action, recovery_stage = recovery_action(attempts)
         elif not missing:
             status = "mastered"
             target_gap = "K2"
@@ -292,38 +348,40 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             attempts = attempts_by_gap.get(target_gap, 0) + 1
             attempts_by_gap[target_gap] = attempts
             update["attempts_by_gap"] = attempts_by_gap
-            if attempts >= 2:
-                action = "SHOW_RECOVERY"
+            if attempts == 2:
+                action, recovery_stage = "NARROW_QUESTION", "narrowed_question"
+            elif attempts == 3:
+                action, recovery_stage = "CONTROLLED_HINT", "controlled_hint"
+            elif attempts >= 4:
+                action, recovery_stage = "SHOW_RECOVERY", "knowledge_recovery"
             elif target_gap == "K1":
                 action = "ASK_MECHANISM"
+                recovery_stage = "socratic_question"
             elif target_gap in {"K2", "K3"}:
                 action = "ASK_CAUSE"
+                recovery_stage = "socratic_question"
             else:
                 action = "ASK_MITIGATION"
+                recovery_stage = "socratic_question"
 
-        update.update({"status": status, "action": action, "target_gap": target_gap})
+        persisted_last_target = target_gap
+        if intent not in {"teachback_answer", "request_help"}:
+            persisted_last_target = state.get("last_target_gap")
+            recovery_stage = str(state.get("recovery_stage", "none"))
+        update.update(
+            {
+                "status": status,
+                "action": action,
+                "target_gap": target_gap,
+                "last_target_gap": persisted_last_target,
+                "recovery_stage": recovery_stage,
+            }
+        )
         return update
 
     def retrieve_evidence(state: TeachBackState) -> dict[str, Any]:
         retrieval = agent.knowledge.retrieve_evidence(state["target_gap"])
         return {"retrieval": retrieval}
-
-    def apply_static_fallback(state: TeachBackState) -> dict[str, Any]:
-        action = state["action"]
-        retrieval = state.get("retrieval")
-        if action == "SHOW_RECOVERY" and retrieval and retrieval.get("recovery_card"):
-            card = retrieval["recovery_card"]
-            source_ids = ", ".join(card.get("source_ids", []))
-            fallback = (
-                f"Mình đổi cách giải thích: {card['text']} "
-                f"Nguồn kiểm chứng: [{source_ids}]. "
-                "Bạn thử dạy lại ý này bằng lời của mình nhé?"
-            )
-        else:
-            fallback = agent._fallback_question(
-                action, state.get("target_gap"), state.get("first_misconception")
-            )
-        return {"agent_response": fallback}
 
     def draft_question(state: TeachBackState) -> dict[str, Any]:
         session_state = _session_state_from(state)
@@ -331,15 +389,28 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         misconception = state.get("first_misconception")
         rubric_excerpt: dict[str, Any] = {
             "task": agent.knowledge.data["concept"]["student_task"],
+            # Give the wording layer enough context to react to the learner
+            # instead of emitting a generic rubric-shaped question.
+            "learner_message": state.get("explanation", "")[:500],
+            "previous_agent_response": state.get("last_agent_response", "")[:800],
+            "support_stage": state.get("recovery_stage", "none"),
         }
         if target_gap and target_gap in agent.knowledge.points:
             point = agent.knowledge.points[target_gap]
             rubric_excerpt["ground_truth"] = point["ground_truth"]
             rubric_excerpt["accepted_signals"] = point["accepted_signals"]
+            rubric_excerpt["recovery_text"] = agent._point_recovery_text(target_gap)
+            rubric_excerpt["example_starting_points"] = list(
+                point.get("accepted_signals", [])[:3]
+            )
         if misconception and misconception in agent.knowledge.misconceptions:
             rubric_excerpt["misconception_claim"] = agent.knowledge.misconceptions[
                 misconception
             ]["claim"]
+        retrieval = state.get("retrieval") or {}
+        rubric_excerpt["source_ids"] = [
+            row["id"] for row in retrieval.get("sources", [])[:2]
+        ]
         payload = agent.provider.draft_question(
             target_gap=target_gap,
             action=state["action"],
@@ -352,7 +423,7 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
 
     def validate_question(state: TeachBackState) -> dict[str, Any]:
         drafted = state.get("draft_question", "")
-        if agent._question_is_safe(drafted):
+        if agent._response_is_safe(drafted, state.get("action", "")):
             return {"agent_response": drafted}
         retry_count = int(state.get("question_retry_count", 0))
         if retry_count == 0:
@@ -377,9 +448,12 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             covered_points=list(state.get("covered", [])),
             unresolved_misconceptions=sorted(state.get("unresolved", [])),
             attempts_by_gap=dict(state.get("attempts_by_gap", {})),
+            last_target_gap=state.get("last_target_gap"),
+            recovery_stage=str(state.get("recovery_stage", "none")),
             awaiting_transfer=bool(state.get("awaiting_transfer", False)),
             transfer_passed=bool(state.get("transfer_passed", False)),
             mastery_complete=bool(state.get("mastery_complete", False)),
+            last_agent_response=state.get("agent_response", ""),
         )
 
         recovery_card = None
@@ -447,7 +521,9 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
 
         missing = state.get("missing", [])
         unresolved = state.get("unresolved", [])
-        base_progress = sum(POINT_WEIGHTS[point] for point in session_state.covered_points)
+        base_progress = sum(
+            agent.knowledge.point_weights[point] for point in session_state.covered_points
+        )
         if session_state.mastery_complete:
             progress = 100
         elif not missing and not unresolved:
@@ -521,6 +597,8 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             "covered_points": session_state.covered_points,
             "unresolved_misconceptions": session_state.unresolved_misconceptions,
             "attempts_by_gap": session_state.attempts_by_gap,
+            "last_target_gap": session_state.last_target_gap,
+            "recovery_stage": session_state.recovery_stage,
             "awaiting_transfer": session_state.awaiting_transfer,
             "transfer_passed": session_state.transfer_passed,
             "mastery_complete": session_state.mastery_complete,
@@ -534,7 +612,6 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
     graph.add_node("merge_coverage_and_regression", merge_coverage_and_regression)
     graph.add_node("decide_route", decide_route)
     graph.add_node("retrieve_evidence", retrieve_evidence)
-    graph.add_node("apply_static_fallback", apply_static_fallback)
     graph.add_node("draft_question", draft_question)
     graph.add_node("validate_question", validate_question)
     graph.add_node("finalize_and_persist", finalize_and_persist)
@@ -551,12 +628,9 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
     graph.add_edge("merge_coverage_and_regression", "decide_route")
 
     def route_after_decide(state: TeachBackState) -> str:
-        # OUT_OF_SCOPE luôn dùng câu trả lời cố định để nhắc lại đúng chủ đề —
-        # không giao cho AI tự soạn, vì trước đó nó không được cấp chỉ dẫn nào
-        # về việc phải nói rõ input đang lạc đề (khác với SHOW_RECOVERY/
-        # COMPLETE_SESSION, vốn đã đi qua đường này từ trước).
-        if state.get("action") == "OUT_OF_SCOPE":
-            return "apply_static_fallback"
+        # The harness owns the action, grounding and mastery decision; the
+        # model owns wording for every normal OpenAI response. Static text is
+        # now only the retry/failure path (and the offline provider path).
         return "retrieve_evidence" if state.get("target_gap") else "draft_question"
 
     graph.add_conditional_edges(
@@ -565,19 +639,9 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         {
             "retrieve_evidence": "retrieve_evidence",
             "draft_question": "draft_question",
-            "apply_static_fallback": "apply_static_fallback",
         },
     )
-    graph.add_conditional_edges(
-        "retrieve_evidence",
-        lambda s: (
-            "apply_static_fallback"
-            if s.get("action") in {"SHOW_RECOVERY", "SOCRATIC_CORRECTION", "COMPLETE_SESSION"}
-            else "draft_question"
-        ),
-        {"apply_static_fallback": "apply_static_fallback", "draft_question": "draft_question"},
-    )
-    graph.add_edge("apply_static_fallback", "finalize_and_persist")
+    graph.add_edge("retrieve_evidence", "draft_question")
     graph.add_edge("draft_question", "validate_question")
     graph.add_conditional_edges(
         "validate_question",
