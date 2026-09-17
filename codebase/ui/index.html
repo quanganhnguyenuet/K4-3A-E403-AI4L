@@ -1,1143 +1,709 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>D3 Teach-back · Vì sao LLM có thể bịa</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #09090b;
-    --surface: #131316;
-    --surface-raised: #18181b;
-    --surface-hover: #1f1f23;
-    --border: #27272a;
-    --border-strong: #34343a;
-    --text: #fafafa;
-    --text-muted: #a1a1aa;
-    --text-faint: #71717a;
-    --accent: #818cf8;
-    --accent-dim: #4338ca33;
-    --emerald: #34d399;
-    --emerald-dim: #34d39920;
-    --amber: #fbbf24;
-    --amber-dim: #fbbf2420;
-    --rose: #fb7185;
-    --rose-dim: #fb718520;
-    --slate: #a1a1aa;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --ease: cubic-bezier(.22,1,.36,1);
-  }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Teach-back Studio</title>
+  <style>
+    :root {
+      --ink: #17211b;
+      --muted: #66736a;
+      --faint: #8c978f;
+      --paper: #f4f1e9;
+      --panel: #fffdf8;
+      --line: #dedbd1;
+      --green: #174b36;
+      --green-2: #2f7357;
+      --mint: #dcecdf;
+      --amber: #d99330;
+      --coral: #d7624d;
+      --shadow: 0 18px 55px rgba(39, 48, 42, .10);
+      --radius: 18px;
+      --font-ui: "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
+      --font-display: "Segoe UI Variable Display", "Segoe UI", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); }
+    body {
+      font-family: var(--font-ui);
+      background-image:
+        radial-gradient(circle at 10% 10%, rgba(47, 115, 87, .09), transparent 30%),
+        radial-gradient(circle at 90% 80%, rgba(217, 147, 48, .08), transparent 34%);
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .app {
+      display: grid; grid-template-columns: 292px minmax(0, 1fr) 290px;
+      width: 100%; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden;
+    }
+    .sidebar, .inspector { background: rgba(255, 253, 248, .78); backdrop-filter: blur(18px); }
+    .sidebar { min-height: 0; border-right: 1px solid var(--line); padding: 22px 16px; display: flex; flex-direction: column; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center;
+      color: white; font-weight: 800; background: var(--green);
+      box-shadow: 0 8px 24px rgba(23, 75, 54, .22);
+    }
+    .brand h1 { font-family: var(--font-display); font-size: 19px; font-weight: 750; margin: 0; letter-spacing: -.02em; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
+    .new-btn, .primary-btn {
+      border: 0; border-radius: 12px; color: #fff; background: var(--green);
+      padding: 11px 14px; font-weight: 700; box-shadow: 0 8px 22px rgba(23, 75, 54, .17);
+    }
+    .new-btn { width: 100%; }
+    .section-title {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 0 5px 8px; color: var(--faint); font-size: 10px;
+      font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
+    }
+    .section-title button { border: 0; background: transparent; color: var(--faint); padding: 2px; font-size: 9px; text-transform: none; letter-spacing: 0; }
+    .section-title button:hover { color: var(--coral); }
+    .lesson-list, .session-list { display: grid; gap: 7px; }
+    .lesson-card, .session-card {
+      border: 1px solid transparent; background: transparent; border-radius: 12px;
+      padding: 10px 11px; text-align: left; width: 100%; color: var(--ink);
+      transition: .18s ease;
+    }
+    .lesson-card:hover, .session-card:hover { background: #fff; border-color: var(--line); transform: translateY(-1px); }
+    .lesson-card.active, .session-card.active { background: var(--mint); border-color: #bdd7c5; }
+    .lesson-track { display: block; font-size: 9px; text-transform: uppercase; color: var(--green-2); font-weight: 800; letter-spacing: .1em; }
+    .lesson-title { display: block; font-size: 13px; font-weight: 720; margin-top: 3px; line-height: 1.3; }
+    .sessions-wrap { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .session-list { overflow-y: auto; padding-right: 2px; }
+    .session-card .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .session-card strong { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card small { color: var(--muted); font-size: 10px; }
+    .session-card p { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .empty-note { color: var(--faint); font-size: 12px; padding: 9px; }
 
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    font-size: 14px;
-  }
-  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .main { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      min-height: 78px; padding: 15px 26px; border-bottom: 1px solid var(--line);
+      background: rgba(244, 241, 233, .78); backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    }
+    .topbar > div:first-child { min-width: 0; }
+    .eyebrow { color: var(--green-2); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; font-size: 10px; }
+    .topbar h2 { font-family: var(--font-display); font-size: 25px; font-weight: 700; line-height: 1.12; margin: 3px 0 0; letter-spacing: -.025em; }
+    .top-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
+    .runtime-badge {
+      display: flex; align-items: center; gap: 7px; border: 1px solid var(--line);
+      background: var(--panel); padding: 8px 11px; border-radius: 999px; font-size: 11px; color: var(--muted);
+    }
+    .runtime-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+    .runtime-badge.online .runtime-dot { background: #34a36c; box-shadow: 0 0 0 4px rgba(52, 163, 108, .12); }
+    .ghost-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 11px; padding: 8px 11px; color: var(--ink); white-space: nowrap; }
+    .progress-area { padding: 15px 26px 0; }
+    .progress-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 7px; }
+    .progress-head strong { color: var(--ink); font-size: 13px; }
+    .progress-track { height: 7px; background: #deddd5; border-radius: 999px; overflow: hidden; }
+    .progress-fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--green), #50a477); transition: width .45s ease; border-radius: inherit; }
+    .point-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+    .point {
+      border: 1px solid var(--line); background: rgba(255,255,255,.55);
+      padding: 8px 9px; border-radius: 10px; min-width: 0;
+    }
+    .point.covered { background: var(--mint); border-color: #b8d6c1; }
+    .point b { display: block; font-size: 10px; color: var(--green-2); }
+    .point span { display: block; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+    .chat { flex: 1; min-height: 0; overflow-y: auto; padding: 24px max(26px, calc((100% - 800px) / 2)); }
+    .progress-area.empty { display: none; }
+    .welcome { max-width: 760px; margin: 7vh auto 0; text-align: center; }
+    .welcome-kicker { color: var(--green-2); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .welcome h3 {
+      max-width: 650px; margin: 9px auto 10px;
+      font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1.14;
+      letter-spacing: -.035em; text-wrap: balance;
+    }
+    .welcome > p { color: var(--muted); line-height: 1.6; font-size: 13px; max-width: 610px; margin: 0 auto; }
+    .welcome-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 25px; text-align: left; }
+    .welcome-card { border: 1px solid var(--line); background: rgba(255,253,248,.85); border-radius: 14px; padding: 13px; color: var(--ink); transition: .18s ease; }
+    .welcome-card:hover { border-color: #a9cbb5; background: var(--mint); transform: translateY(-2px); }
+    .welcome-card small { color: var(--green-2); display: block; font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .welcome-card strong { display: block; margin-top: 4px; font-size: 12.5px; }
+    .message { display: flex; gap: 10px; margin: 0 0 19px; align-items: flex-start; }
+    .message.user { justify-content: flex-end; }
+    .avatar {
+      flex: 0 0 30px; height: 30px; display: grid; place-items: center; border-radius: 10px;
+      background: var(--green); color: white; font-size: 11px; font-weight: 800;
+    }
+    .bubble { max-width: 78%; padding: 12px 14px; border-radius: 5px 16px 16px 16px; background: var(--panel); border: 1px solid var(--line); line-height: 1.55; font-size: 13.5px; box-shadow: 0 5px 18px rgba(42, 48, 44, .04); white-space: pre-wrap; }
+    .message.user .bubble { color: white; background: var(--green); border-color: var(--green); border-radius: 16px 5px 16px 16px; }
+    .message-meta { margin-top: 6px; color: var(--faint); font-size: 10px; }
+    .typing { display: inline-flex; gap: 4px; align-items: center; height: 18px; }
+    .typing i { width: 5px; height: 5px; background: var(--faint); border-radius: 50%; animation: pulse 1s infinite alternate; }
+    .typing i:nth-child(2) { animation-delay: .18s; }
+    .typing i:nth-child(3) { animation-delay: .36s; }
+    @keyframes pulse { to { transform: translateY(-4px); opacity: .35; } }
+    .status-banner {
+      display: none; margin: 0 max(26px, calc((100% - 800px) / 2)) 10px;
+      border-radius: 12px; padding: 10px 13px; font-size: 12px; border: 1px solid var(--line);
+    }
+    .status-banner.show { display: block; }
+    .status-banner.out_of_scope { background: #fff0e9; border-color: #efc6b8; color: #8c3a2c; }
+    .status-banner.mastered { background: var(--mint); border-color: #b8d6c1; color: var(--green); }
+    .status-banner.needs_recovery { background: #fff4d9; border-color: #ead19a; color: #7e5a16; }
+    .composer-wrap { padding: 0 max(26px, calc((100% - 800px) / 2)) 22px; }
+    .starters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+    .chip { border: 1px solid var(--line); background: rgba(255,253,248,.85); border-radius: 999px; padding: 7px 10px; white-space: nowrap; font-size: 10.5px; color: var(--muted); }
+    .chip:hover { border-color: var(--green-2); color: var(--green); }
+    .composer {
+      display: flex; align-items: flex-end; gap: 9px; background: var(--panel);
+      border: 1px solid #cbc9bf; border-radius: 16px; padding: 9px;
+      box-shadow: var(--shadow);
+    }
+    textarea { flex: 1; border: 0; outline: 0; resize: none; min-height: 24px; max-height: 130px; background: transparent; padding: 7px; line-height: 1.45; color: var(--ink); }
+    .send { border: 0; background: var(--green); color: white; width: 39px; height: 39px; border-radius: 12px; font-weight: 900; }
+    .send:disabled { opacity: .45; cursor: wait; }
+    .composer-note { margin: 7px 4px 0; color: var(--faint); font-size: 10px; display: flex; justify-content: space-between; }
 
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+    .inspector { min-height: 0; border-left: 1px solid var(--line); padding: 22px 18px; overflow-y: auto; }
+    .inspector h3 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 18px; }
+    .task-card { margin-top: 13px; padding: 13px; border: 1px solid var(--line); background: var(--panel); border-radius: 13px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .inspector-label { margin: 23px 0 9px; color: var(--faint); text-transform: uppercase; letter-spacing: .11em; font-size: 9px; font-weight: 800; }
+    .source-list { display: grid; gap: 8px; }
+    .source { border-left: 3px solid var(--green-2); background: var(--panel); padding: 10px 11px; border-radius: 4px 11px 11px 4px; }
+    .source b { font-size: 10px; color: var(--green); }
+    .source small { color: var(--faint); font-size: 9px; margin-left: 5px; }
+    .source p { font-size: 11px; line-height: 1.45; margin: 6px 0 0; color: var(--muted); }
+    .privacy { margin-top: 24px; padding: 11px; border-radius: 12px; background: #edf3ee; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
 
-  button { font-family: inherit; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(20, 28, 23, .38); display: none; place-items: center; padding: 20px; z-index: 20; }
+    .modal-backdrop.show { display: grid; }
+    .modal { width: min(470px, 100%); background: var(--panel); border-radius: 20px; box-shadow: 0 25px 80px rgba(0,0,0,.22); padding: 22px; }
+    .modal-head { display: flex; justify-content: space-between; gap: 14px; }
+    .modal h3 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 22px; }
+    .modal p { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .field { margin-top: 14px; }
+    .field label { display: block; font-size: 11px; font-weight: 750; margin-bottom: 6px; }
+    .field input, .field select { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: white; padding: 10px 11px; outline: 0; }
+    .field input:focus, .field select:focus { border-color: var(--green-2); box-shadow: 0 0 0 3px rgba(47,115,87,.10); }
+    .secret-row { display: flex; gap: 7px; }
+    .secret-row input { flex: 1; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: white; border-radius: 999px; padding: 10px 15px; font-size: 11px; opacity: 0; pointer-events: none; transition: .2s; z-index: 30; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-  .shell {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 24px 20px 20px;
-    height: 100vh;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    overflow: hidden;
-  }
-  @media (max-width: 760px) {
-    .shell { height: auto; min-height: 100%; overflow: visible; padding-bottom: 32px; }
-  }
-
-  /* ---------- Header ---------- */
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .header-title { display: flex; flex-direction: column; gap: 3px; }
-  .header-title h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-  .header-title p { font-size: 12.5px; color: var(--text-faint); margin: 0; }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-
-  .badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 500;
-    padding: 5px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--surface-raised);
-    color: var(--text-muted);
-    transition: background 250ms var(--ease), color 250ms var(--ease), border-color 250ms var(--ease);
-    white-space: nowrap;
-  }
-  .badge .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
-  .badge[data-tone="mastered"] { color: var(--emerald); background: var(--emerald-dim); border-color: #34d39940; }
-  .badge[data-tone="risk"] { color: var(--rose); background: var(--rose-dim); border-color: #fb718540; }
-  .badge[data-tone="warn"] { color: var(--amber); background: var(--amber-dim); border-color: #fbbf2440; }
-  .badge[data-tone="neutral"] { color: var(--text-muted); }
-
-  .icon-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12.5px; font-weight: 500;
-    color: var(--text-muted);
-    background: transparent;
-    border: 1px solid var(--border);
-    padding: 7px 12px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background 150ms var(--ease), color 150ms var(--ease), border-color 150ms var(--ease);
-  }
-  .icon-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-strong); }
-  .icon-btn:active { transform: scale(0.97); }
-  .icon-btn svg { transition: transform 400ms var(--ease); }
-  .icon-btn:hover svg { transform: rotate(-90deg); }
-
-  /* ---------- Progress ---------- */
-  .progress-block { display: flex; flex-direction: column; gap: 5px; }
-  .progress-row { display: flex; align-items: center; gap: 12px; }
-  .progress-track {
-    position: relative;
-    flex: 1;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--surface-raised);
-    overflow: hidden;
-  }
-  .progress-fill {
-    position: absolute; inset: 0; width: 0%;
-    border-radius: 999px;
-    background: var(--accent);
-    transition: width 600ms var(--ease), background 400ms var(--ease);
-  }
-  .progress-fill[data-tone="mastered"] { background: var(--emerald); }
-  .progress-pct { font-size: 12px; color: var(--text-faint); min-width: 32px; text-align: right; }
-  .level-label { font-size: 11.5px; color: var(--text-faint); font-style: italic; transition: color 300ms var(--ease); }
-
-  /* ---------- Grid ---------- */
-  .grid {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: 1fr;
-    gap: 16px;
-    flex: 1;
-    min-height: 0;
-  }
-  @media (max-width: 760px) {
-    .grid { grid-template-columns: 1fr; grid-template-rows: auto auto; }
-  }
-
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    min-height: 0;
-  }
-  @media (max-width: 760px) {
-    .panel { min-height: auto; height: auto !important; }
-  }
-  .panel-pad { padding: 16px; }
-  .panel-label {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
-    color: var(--text-faint); text-transform: uppercase;
-    margin: 0 0 12px;
-  }
-
-  /* Panel trái: sơ đồ + hiểu sai đứng yên, chỉ khối nguồn trích dẫn cuộn riêng */
-  .aside-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .aside-fixed { flex: none; padding: 16px 16px 0; }
-  .aside-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 16px; }
-  @media (max-width: 760px) {
-    .aside-panel { height: auto; overflow: visible; }
-    .aside-scroll { overflow-y: visible; max-height: none; }
-  }
-
-  /* ---------- Node-chain skill tree (K1-K4) ---------- */
-  .node-chain { display: flex; flex-direction: column; }
-  .node-row { display: flex; align-items: center; gap: 12px; padding: 3px 0; }
-  .node-circle {
-    position: relative; flex: none;
-    width: 34px; height: 34px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--surface-raised);
-    border: 2px solid var(--border);
-    color: var(--text-faint);
-    font-weight: 700; font-size: 12.5px;
-    transition: background 400ms var(--ease), border-color 400ms var(--ease), box-shadow 400ms var(--ease), color 400ms var(--ease);
-  }
-  .node-num { transition: opacity 200ms var(--ease); }
-  .node-check {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(.4); color: #052e1c;
-    transition: all 350ms cubic-bezier(.34,1.56,.64,1);
-  }
-  .node-row[data-state="active"] .node-circle {
-    border-color: var(--accent);
-    background: var(--accent-dim);
-    color: var(--accent);
-    animation: node-pulse 1.8s infinite;
-  }
-  @keyframes node-pulse {
-    0%, 100% { box-shadow: 0 0 0 3px #818cf822, 0 0 14px -3px #818cf8aa; }
-    50% { box-shadow: 0 0 0 6px #818cf80f, 0 0 18px 0px #818cf8cc; }
-  }
-  .node-row[data-state="covered"] .node-circle {
-    border-color: var(--emerald);
-    background: var(--emerald);
-    box-shadow: 0 0 14px -2px #34d399aa;
-  }
-  .node-row[data-state="covered"] .node-num { opacity: 0; }
-  .node-row[data-state="covered"] .node-check { opacity: 1; transform: scale(1); }
-
-  .node-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-  .node-id { font-size: 10.5px; font-weight: 700; color: var(--text-faint); letter-spacing: 0.02em; }
-  .node-row[data-state="active"] .node-id { color: var(--accent); }
-  .node-row[data-state="covered"] .node-id { color: var(--emerald); }
-  .node-label { font-size: 12.5px; color: var(--text-muted); transition: color 300ms var(--ease); }
-  .node-row[data-state="covered"] .node-label { color: var(--text); }
-
-  .connector { position: relative; width: 2px; height: 20px; margin-left: 16px; background: var(--border); overflow: visible; }
-  .connector-fill {
-    position: absolute; inset: 0;
-    background: linear-gradient(var(--emerald), var(--accent));
-    transform: scaleY(0); transform-origin: top;
-    transition: transform 650ms var(--ease);
-  }
-  .connector.filled .connector-fill { transform: scaleY(1); }
-  .connector-spark {
-    position: absolute; left: 50%; top: -4px;
-    width: 7px; height: 7px; margin-left: -3.5px;
-    border-radius: 999px; background: #fff;
-    box-shadow: 0 0 10px 3px var(--emerald);
-    opacity: 0;
-  }
-  .connector.spark-run .connector-spark { animation: spark-travel 650ms var(--ease); }
-  @keyframes spark-travel {
-    0% { top: -4px; opacity: 1; }
-    85% { opacity: 1; }
-    100% { top: 100%; opacity: 0; }
-  }
-
-  .divider { height: 1px; background: var(--border); margin: 14px 0; }
-
-  /* Misconception alerts */
-  .mis-item {
-    display: flex; gap: 8px; align-items: flex-start;
-    padding: 9px 10px;
-    border-radius: var(--radius-sm);
-    background: var(--rose-dim);
-    border: 1px solid #fb718530;
-    font-size: 12px; color: var(--rose);
-    line-height: 1.4;
-    margin-bottom: 6px;
-  }
-  .mis-empty { font-size: 12px; color: var(--text-faint); font-style: italic; }
-
-  /* Source citations */
-  .src-item {
-    padding: 8px 10px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--surface-raised);
-    margin-bottom: 6px;
-  }
-  .src-id { font-size: 11px; font-weight: 600; color: var(--accent); }
-  .src-text { font-size: 12px; color: var(--text-faint); line-height: 1.45; margin-top: 2px; }
-  .src-empty { font-size: 12px; color: var(--text-faint); font-style: italic; }
-
-  /* ---------- Chat panel ---------- */
-  .chat-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
-  @media (max-width: 760px) {
-    .chat-panel { height: 560px; }
-  }
-  .chat-head {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  /* Companion creature */
-  .companion { position: relative; width: 46px; height: 46px; flex: none; display: flex; align-items: center; justify-content: center; }
-  .companion[data-mood="idle"]      { --mood-color: #818cf8; }
-  .companion[data-mood="thinking"]  { --mood-color: #818cf8; }
-  .companion[data-mood="confused"]  { --mood-color: #fb7185; }
-  .companion[data-mood="worried"]   { --mood-color: #fbbf24; }
-  .companion[data-mood="puzzled"]   { --mood-color: #a1a1aa; }
-  .companion[data-mood="happy"]     { --mood-color: #34d399; }
-
-  .companion-glow {
-    position: absolute; inset: -9px; border-radius: 50%;
-    background: radial-gradient(circle, var(--mood-color) 0%, transparent 72%);
-    opacity: .32; filter: blur(1px);
-    animation: glow-breathe 3.2s ease-in-out infinite;
-    transition: background 450ms var(--ease);
-  }
-  @keyframes glow-breathe { 0%, 100% { transform: scale(1); opacity: .26; } 50% { transform: scale(1.16); opacity: .5; } }
-
-  .companion-blob {
-    position: relative; width: 40px; height: 40px;
-    background: linear-gradient(155deg, var(--mood-color), var(--mood-color));
-    background-blend-mode: normal;
-    filter: brightness(1);
-    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
-    animation: blob-morph 6s ease-in-out infinite, blob-breathe 3.2s ease-in-out infinite;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 2px 10px -2px rgba(0,0,0,.5);
-    transition: background 450ms var(--ease);
-  }
-  @keyframes blob-morph {
-    0%, 100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; }
-    33% { border-radius: 63% 37% 41% 59% / 55% 40% 60% 45%; }
-    66% { border-radius: 37% 63% 55% 45% / 59% 55% 45% 41%; }
-  }
-  @keyframes blob-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-
-  .companion[data-mood="thinking"] .companion-blob { animation-duration: 6s, 1.5s; }
-  .companion[data-mood="confused"] .companion-blob { animation: blob-morph 6s ease-in-out infinite, wobble .5s ease-in-out infinite; }
-  .companion[data-mood="happy"] .companion-blob { animation: blob-morph 4s ease-in-out infinite, bounce-happy .7s cubic-bezier(.34,1.56,.64,1) infinite; }
-  @keyframes wobble { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
-  @keyframes bounce-happy { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.06); } }
-
-  .companion-face { position: absolute; inset: 0; }
-  .eye {
-    position: absolute; top: 15px; width: 5px; height: 6px; border-radius: 50%;
-    background: #0b0b10; animation: blink 4.6s infinite;
-  }
-  .eye.left { left: 12px; } .eye.right { right: 12px; }
-  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
-
-  .mouth { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); transition: all 350ms var(--ease); }
-  .companion[data-mood="idle"] .mouth,
-  .companion[data-mood="thinking"] .mouth {
-    width: 9px; height: 0; border-top: 2px solid #0b0b10; border-radius: 2px;
-  }
-  .companion[data-mood="happy"] .mouth {
-    width: 13px; height: 13px; border: 2px solid transparent; border-bottom-color: #03140c; border-radius: 50%;
-  }
-  .companion[data-mood="confused"] .mouth {
-    width: 10px; height: 10px; border: 2px solid transparent; border-top-color: #3d0512; border-radius: 50%; transform: translateX(-50%) translateY(2px);
-  }
-  .companion[data-mood="worried"] .mouth {
-    width: 8px; height: 0; border-top: 2px solid #3d2d05; border-radius: 2px; transform: translateX(-50%) rotate(-8deg);
-  }
-  .companion[data-mood="puzzled"] .mouth {
-    width: 6px; height: 6px; border: none; background: #1c1c1f; border-radius: 50%;
-  }
-
-  .particle {
-    position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; margin: -2.5px;
-    border-radius: 999px; background: var(--emerald); box-shadow: 0 0 6px 1px var(--emerald);
-    animation: particle-fly 850ms ease-out forwards; pointer-events: none;
-  }
-  @keyframes particle-fly { to { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; } }
-
-  .chat-head-text p { margin: 0; }
-  .chat-head-text .name { font-size: 13px; font-weight: 600; }
-  .chat-head-text .state { font-size: 11.5px; color: var(--text-faint); display: flex; align-items: center; gap: 5px; margin-top: 1px; }
-  .live-dot { width: 5px; height: 5px; border-radius: 999px; background: var(--emerald); }
-  .live-dot.busy { background: var(--amber); animation: pulse-soft 1s infinite; }
-  @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
-
-  .chat-scroll {
-    flex: 1;
-    overflow-y: auto;
-    padding: 18px 16px;
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .row { display: flex; }
-  .row.agent { justify-content: flex-start; }
-  .row.user { justify-content: flex-end; }
-  .bubble {
-    max-width: 80%;
-    padding: 9px 13px;
-    border-radius: var(--radius-md);
-    font-size: 13.5px;
-    line-height: 1.55;
-    animation: rise-in 280ms var(--ease);
-  }
-  @keyframes rise-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .row.agent .bubble {
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-bottom-left-radius: 4px;
-  }
-  .row.user .bubble {
-    background: var(--accent);
-    color: #0d0d14;
-    font-weight: 500;
-    border-bottom-right-radius: 4px;
-  }
-  .row.system .bubble {
-    background: transparent;
-    border: 1px dashed var(--border-strong);
-    color: var(--text-faint);
-    font-size: 12px;
-    font-style: italic;
-  }
-
-  .typing {
-    display: inline-flex; gap: 4px;
-    padding: 11px 13px;
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    border-bottom-left-radius: 4px;
-  }
-  .typing span {
-    width: 5px; height: 5px; border-radius: 999px; background: var(--text-faint);
-    animation: bounce 1.2s infinite ease-in-out;
-  }
-  .typing span:nth-child(2) { animation-delay: .15s; }
-  .typing span:nth-child(3) { animation-delay: .3s; }
-  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
-
-  /* Recovery inline card */
-  .recovery-wrap {
-    display: grid; grid-template-rows: 0fr; opacity: 0;
-    transition: grid-template-rows 400ms var(--ease), opacity 300ms var(--ease);
-  }
-  .recovery-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-bottom: 4px; }
-  .recovery-inner { overflow: hidden; min-height: 0; }
-  .recovery-card {
-    border: 1px solid #fbbf2440;
-    background: var(--amber-dim);
-    border-radius: var(--radius-md);
-    padding: 12px 14px;
-    font-size: 12.5px;
-    color: var(--text);
-    line-height: 1.55;
-  }
-  .recovery-card .label { font-size: 11px; font-weight: 600; color: var(--amber); margin-bottom: 6px; letter-spacing: 0.02em; }
-  .recovery-card .refs { margin-top: 8px; font-size: 11px; color: var(--text-faint); }
-
-  /* Next-step banner — tín hiệu rõ ràng khi cần 1 bước cuối hoặc đã xong hẳn */
-  .banner-wrap {
-    display: grid; grid-template-rows: 0fr; opacity: 0;
-    transition: grid-template-rows 400ms var(--ease), opacity 300ms var(--ease);
-  }
-  .banner-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-bottom: 4px; }
-  .banner-inner { overflow: hidden; min-height: 0; padding: 0 16px; }
-  .banner {
-    display: flex; align-items: flex-start; gap: 9px;
-    border-radius: var(--radius-md);
-    padding: 11px 14px;
-    font-size: 12.5px; line-height: 1.5;
-    border: 1px solid var(--border);
-  }
-  .banner[data-tone="info"] { background: var(--accent-dim); border-color: #818cf845; color: var(--text); }
-  .banner[data-tone="success"] { background: var(--emerald-dim); border-color: #34d39960; color: var(--text); }
-
-  /* Composer */
-  .composer { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
-  .quick-row { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 2px; }
-  .quick-chip {
-    flex: none; font-size: 11.5px; font-weight: 500;
-    padding: 6px 10px; border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-faint);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 150ms var(--ease);
-  }
-  .quick-chip:hover { border-color: var(--border-strong); color: var(--text-muted); background: var(--surface-raised); }
-
-  .input-row { display: flex; gap: 8px; }
-  .text-input {
-    flex: 1;
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 10px 13px;
-    font-size: 13.5px;
-    color: var(--text);
-    transition: border-color 150ms var(--ease);
-  }
-  .text-input:focus { outline: none; border-color: var(--accent); }
-  .text-input::placeholder { color: var(--text-faint); }
-  .text-input:disabled { opacity: 0.5; }
-
-  .send-btn {
-    width: 38px; height: 38px; flex: none;
-    border-radius: var(--radius-sm);
-    background: var(--accent);
-    color: #0d0d14;
-    border: none;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: transform 150ms var(--ease), opacity 150ms var(--ease);
-  }
-  .send-btn:hover { opacity: 0.88; }
-  .send-btn:active { transform: scale(0.93); }
-  .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-  .footer-note { font-size: 11px; color: var(--text-faint); text-align: center; padding-top: 4px; }
-
-  /* Toasts */
-  .toast-stack {
-    position: fixed; top: 16px; right: 16px; z-index: 50;
-    display: flex; flex-direction: column; gap: 8px;
-    pointer-events: none;
-  }
-  .toast {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px 13px; border-radius: var(--radius-sm);
-    background: var(--surface-raised); border: 1px solid var(--border);
-    font-size: 12.5px; font-weight: 500; color: var(--text);
-    box-shadow: 0 8px 24px -8px rgba(0,0,0,.6);
-    max-width: 270px;
-    animation: toast-in 350ms var(--ease), toast-out 300ms var(--ease) 2.7s forwards;
-  }
-  .toast[data-tone="success"] { border-color: #34d39950; }
-  .toast[data-tone="danger"] { border-color: #fb718550; }
-  .toast[data-tone="mastery"] { border-color: #34d39980; background: var(--emerald-dim); }
-  @keyframes toast-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
-  @keyframes toast-out { to { opacity: 0; transform: translateX(18px); } }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
-  }
-</style>
+    @media (max-width: 1060px) {
+      .app { grid-template-columns: 250px minmax(0, 1fr); }
+      .inspector { display: none; }
+    }
+    @media (max-width: 900px) {
+      .topbar { padding-left: 20px; padding-right: 20px; gap: 12px; }
+      .topbar h2 { font-size: 22px; }
+      .runtime-badge { padding-left: 9px; padding-right: 9px; }
+    }
+    @media (max-width: 720px) {
+      .app { display: block; }
+      .sidebar { display: none; }
+      .main { height: 100%; }
+      .topbar { padding: 12px 15px; min-height: 68px; }
+      .topbar h2 { font-size: 19px; }
+      .runtime-badge { display: none; }
+      .progress-area { padding: 10px 15px 0; }
+      .point-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chat { padding: 18px 15px; }
+      .welcome { margin-top: 3vh; }
+      .welcome h3 { font-size: 27px; }
+      .welcome-grid { grid-template-columns: 1fr; }
+      .bubble { max-width: 88%; }
+      .composer-wrap { padding: 0 15px 13px; }
+      .status-banner { margin-left: 15px; margin-right: 15px; }
+    }
+  </style>
 </head>
 <body>
-
-<div class="toast-stack" id="toastStack"></div>
-
-<div class="shell">
-
-  <!-- Header -->
-  <header class="header">
-    <div class="header-title">
-      <h1>Vì sao LLM có thể bịa</h1>
-      <p>D3 Teach-back · session <span class="mono" id="sessionLabel">–</span></p>
-    </div>
-    <div class="header-right">
-      <span class="badge" id="statusBadge" data-tone="neutral"><span class="dot"></span><span id="statusText">Chưa bắt đầu</span></span>
-      <button class="icon-btn" id="resetBtn" type="button">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-        Phiên mới
-      </button>
-    </div>
-  </header>
-
-  <div class="progress-block">
-    <div class="progress-row">
-      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-      <span class="progress-pct" id="progressPct">0%</span>
-    </div>
-    <p class="level-label" id="levelLabel">Không đủ bằng chứng để đánh giá</p>
-  </div>
-
-  <!-- Grid -->
-  <main class="grid">
-
-    <!-- LEFT: knowledge state -->
-    <aside class="panel aside-panel">
-      <div class="aside-fixed">
-        <p class="panel-label">Sơ đồ kiến thức</p>
-        <div class="node-chain" id="nodeChain">
-          <div class="node-row" data-point="K1" data-state="pending">
-            <div class="node-circle">
-              <span class="node-num">1</span>
-              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            </div>
-            <div class="node-info"><span class="node-id">K1 · 25đ</span><span class="node-label">Cơ chế sinh xác suất</span></div>
-          </div>
-          <div class="connector"><div class="connector-fill"></div><div class="connector-spark"></div></div>
-
-          <div class="node-row" data-point="K2" data-state="pending">
-            <div class="node-circle">
-              <span class="node-num">2</span>
-              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            </div>
-            <div class="node-info"><span class="node-id">K2 · 25đ</span><span class="node-label">Hợp lý không đồng nghĩa đúng</span></div>
-          </div>
-          <div class="connector"><div class="connector-fill"></div><div class="connector-spark"></div></div>
-
-          <div class="node-row" data-point="K3" data-state="pending">
-            <div class="node-circle">
-              <span class="node-num">3</span>
-              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            </div>
-            <div class="node-info"><span class="node-id">K3 · 20đ</span><span class="node-label">Nguồn gây thiếu / sai căn cứ</span></div>
-          </div>
-          <div class="connector"><div class="connector-fill"></div><div class="connector-spark"></div></div>
-
-          <div class="node-row" data-point="K4" data-state="pending">
-            <div class="node-circle">
-              <span class="node-num">4</span>
-              <span class="node-check"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            </div>
-            <div class="node-info"><span class="node-id">K4 · 15đ</span><span class="node-label">Giảm rủi ro, không tuyệt đối</span></div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <p class="panel-label">Hiểu sai cần sửa</p>
-        <div id="misList"><p class="mis-empty">Chưa phát hiện hiểu sai nào.</p></div>
-
-        <div class="divider"></div>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">TB</div>
+        <div><h1>Teach-back Studio</h1><p>Học bằng cách dạy lại</p></div>
       </div>
-
-      <div class="aside-scroll">
-        <p class="panel-label">Nguồn trích dẫn gần nhất</p>
-        <div id="srcList"><p class="src-empty">Chưa có trích dẫn.</p></div>
-      </div>
+      <button class="new-btn" id="newSessionBtn">＋ Cuộc trò chuyện mới</button>
+      <section class="sessions-wrap">
+        <div class="section-title"><span>Lịch sử · <span id="sessionCount">0</span></span><button id="clearHistoryBtn" type="button">Xóa tất cả</button></div>
+        <div class="session-list" id="sessionList"></div>
+      </section>
     </aside>
 
-    <!-- RIGHT: chat -->
-    <section class="panel chat-panel">
-      <div class="chat-head">
-        <div class="companion" id="companion" data-mood="idle">
-          <div class="companion-glow"></div>
-          <div class="companion-blob">
-            <div class="companion-face">
-              <span class="eye left"></span>
-              <span class="eye right"></span>
-              <span class="mouth"></span>
-            </div>
-          </div>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow" id="trackLabel">Cuộc trò chuyện mới</div>
+          <h2 id="lessonTitle">Teach-back Studio</h2>
         </div>
-        <div class="chat-head-text">
-          <p class="name">Học trò AI</p>
-          <p class="state"><span class="live-dot" id="liveDot"></span><span id="liveText">Đang chờ bạn dạy</span></p>
+        <div class="top-actions">
+          <div class="runtime-badge" id="runtimeBadge"><span class="runtime-dot"></span><span id="runtimeText">Offline</span></div>
+          <button class="ghost-btn" id="mobileNewBtn" title="Phiên mới">＋</button>
+          <button class="ghost-btn" id="settingsBtn">Cấu hình</button>
+        </div>
+      </header>
+
+      <section class="progress-area empty" id="progressArea">
+        <div class="progress-head"><span>Tiến độ hiểu bài</span><strong id="progressText">0%</strong></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="point-row" id="pointRow"></div>
+      </section>
+
+      <div class="chat" id="chat"></div>
+      <div class="status-banner" id="statusBanner"></div>
+      <div class="composer-wrap">
+        <div class="starters" id="starters"></div>
+        <div class="composer">
+          <textarea id="messageInput" rows="1" placeholder="Bạn muốn ôn lại phần nào? Hãy nói tự nhiên như đang chat…"></textarea>
+          <button class="send" id="sendBtn" aria-label="Gửi">↑</button>
+        </div>
+        <div class="composer-note"><span>Enter để gửi · Shift+Enter xuống dòng</span><span id="sessionIdLabel"></span></div>
+      </div>
+    </main>
+
+    <aside class="inspector">
+      <h3>Ngữ cảnh học tập</h3>
+      <div class="task-card" id="taskCard">Agent sẽ tự xác định bài học từ prompt đầu tiên rồi nạp rubric và nguồn phù hợp.</div>
+      <div class="inspector-label">Nguồn liên quan gần nhất</div>
+      <div class="source-list" id="sourceList"><div class="empty-note">Nguồn sẽ xuất hiện sau khi bạn dạy lại.</div></div>
+      <div class="privacy">Knowledge chỉ trả về diễn giải ngắn và mã định vị transcript. Nội dung transcript đầy đủ không được gửi ra giao diện.</div>
+    </aside>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal-head">
+        <div><div class="eyebrow">Runtime</div><h3 id="settingsTitle">Kết nối mô hình</h3></div>
+        <button class="ghost-btn" id="closeSettingsBtn">Đóng</button>
+      </div>
+      <p>Chọn Offline để thử workflow không tốn phí, hoặc OpenAI để đánh giá ngữ nghĩa và trả lời realtime.</p>
+      <div class="field">
+        <label for="providerInput">Provider</label>
+        <select id="providerInput"><option value="offline">Offline rules</option><option value="openai">OpenAI realtime</option></select>
+      </div>
+      <div class="field" id="modelField">
+        <label for="modelInput">Model</label>
+        <input id="modelInput" value="gpt-5-mini" autocomplete="off">
+      </div>
+      <div class="field" id="keyField">
+        <label for="apiKeyInput">OpenAI API key</label>
+        <div class="secret-row">
+          <input id="apiKeyInput" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
+          <button class="ghost-btn" id="toggleKeyBtn" type="button">Hiện</button>
         </div>
       </div>
-
-      <div class="chat-scroll" id="chatScroll"></div>
-
-      <div class="recovery-wrap" id="recoveryWrap">
-        <div class="recovery-inner" style="padding: 0 16px;">
-          <div class="recovery-card">
-            <p class="label">TÀI LIỆU ÔN TẬP</p>
-            <p id="recoveryText"></p>
-            <p class="refs" id="recoveryRefs"></p>
-          </div>
-        </div>
+      <p id="keyPolicy">Key chỉ được gửi tới backend local trong request hiện tại và không được lưu vào lịch sử.</p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cancelSettingsBtn">Hủy</button>
+        <button class="primary-btn" id="saveSettingsBtn">Lưu cấu hình</button>
       </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
 
-      <div class="banner-wrap" id="bannerWrap">
-        <div class="banner-inner">
-          <div class="banner" id="bannerBox" data-tone="info">
-            <span id="bannerIcon">🎯</span>
-            <span id="bannerText"></span>
-          </div>
-        </div>
-      </div>
+  <script>
+    (() => {
+      "use strict";
+      const state = {
+        lessons: [],
+        sessions: [],
+        activeSession: null,
+        provider: localStorage.getItem("tb_provider") || "offline",
+        model: localStorage.getItem("tb_model") || "gpt-5-mini",
+        apiKey: "",
+        runtime: null,
+        sending: false,
+      };
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        sessionList: $("sessionList"), sessionCount: $("sessionCount"),
+        lessonTitle: $("lessonTitle"), trackLabel: $("trackLabel"), progressArea: $("progressArea"),
+        taskCard: $("taskCard"), progressText: $("progressText"), progressFill: $("progressFill"),
+        pointRow: $("pointRow"), chat: $("chat"), starters: $("starters"), sourceList: $("sourceList"),
+        messageInput: $("messageInput"), sendBtn: $("sendBtn"), newSessionBtn: $("newSessionBtn"),
+        mobileNewBtn: $("mobileNewBtn"), sessionIdLabel: $("sessionIdLabel"), statusBanner: $("statusBanner"),
+        clearHistoryBtn: $("clearHistoryBtn"),
+        runtimeBadge: $("runtimeBadge"), runtimeText: $("runtimeText"), settingsBtn: $("settingsBtn"),
+        settingsModal: $("settingsModal"), closeSettingsBtn: $("closeSettingsBtn"),
+        cancelSettingsBtn: $("cancelSettingsBtn"), saveSettingsBtn: $("saveSettingsBtn"),
+        providerInput: $("providerInput"), modelInput: $("modelInput"), apiKeyInput: $("apiKeyInput"),
+        modelField: $("modelField"), keyField: $("keyField"), toggleKeyBtn: $("toggleKeyBtn"),
+        keyPolicy: $("keyPolicy"), toast: $("toast"),
+      };
 
-      <div class="composer">
-        <div class="quick-row" id="quickRow">
-          <button class="quick-chip" data-demo="0" type="button">Ví dụ K1</button>
-          <button class="quick-chip" data-demo="1" type="button">Ví dụ K2</button>
-          <button class="quick-chip" data-demo="2" type="button">Ví dụ K3+K4</button>
-          <button class="quick-chip" data-demo="3" type="button">Hiểu sai (test)</button>
-        </div>
-        <div class="input-row">
-          <input type="text" id="textInput" class="text-input" placeholder="Giải thích cho học trò AI nghe..." autocomplete="off" />
-          <button class="send-btn" id="sendBtn" type="button" aria-label="Gửi">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <p class="footer-note">Kết nối tới <span class="mono" id="apiLabel"></span> · D3 Teach-back Agent</p>
-</div>
-
-<script>
-(function () {
-  "use strict";
-
-  // ---------- Config ----------
-  const API_BASE = "http://127.0.0.1:8000";
-  document.getElementById('apiLabel').textContent = API_BASE;
-
-  // Trọng số điểm thật, khớp POINT_WEIGHTS trong agent_core.py — chỉ dùng để hiển thị,
-  // không ảnh hưởng tới điểm số thật (điểm số luôn tính ở backend).
-  const POINT_WEIGHTS = { K1: 25, K2: 25, K3: 20, K4: 15 };
-
-  // Nguyên văn progress_mapping trong knowledge/d3-llm-hallucination-ground-truth.json —
-  // không tự bịa câu mô tả, chỉ hiển thị lại đúng ngưỡng đã định nghĩa trong spec.
-  const LEVEL_MAP = [
-    { min: 0, text: 'Không đủ bằng chứng để đánh giá' },
-    { min: 35, text: 'Nắm được một phần cơ chế hoặc một nguyên nhân' },
-    { min: 70, text: 'Nắm cơ chế và khoảng trống giữa hợp lý với đúng, còn thiếu nguyên nhân hoặc ví dụ' },
-    { min: 100, text: 'Đủ tiêu chí hoàn thành (mastered)' },
-  ];
-
-  const DEMO_TEXTS = [
-    "LLM tao ra cau tra loi bang cach du doan token tiep theo theo mot phan bo xac suat, roi noi token do vao ngu canh va lap lai.",
-    "Mot cau nghe rat hop ly va tron chay khong co nghia la no da duoc kiem chung la dung su that, vi model khong tu dong tra cuu su that.",
-    "Model co the thieu can cu vi du lieu huan luyen bi thien lech hoac thong tin nam sau knowledge cutoff; dung RAG va yeu cau trich dan giup giam rui ro nhung khong bao dam dung tuyet doi.",
-    "RAG thi he thong het hallucination va dat do chinh xac 100% luon roi.",
-  ];
-
-  const GREETING = 'Chào bạn, mình là một AI đang tập hiểu vì sao chính những mô hình như mình lại có thể bịa ra câu trả lời sai. Bạn dạy mình với nhé?';
-
-  // ---------- Session ----------
-  function newSessionId() {
-    return (crypto.randomUUID ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(16).slice(2));
-  }
-  let sessionId = localStorage.getItem('d3_session_id') || newSessionId();
-  localStorage.setItem('d3_session_id', sessionId);
-
-  // ---------- DOM refs ----------
-  const el = {
-    sessionLabel: document.getElementById('sessionLabel'),
-    statusBadge: document.getElementById('statusBadge'),
-    statusText: document.getElementById('statusText'),
-    resetBtn: document.getElementById('resetBtn'),
-    progressFill: document.getElementById('progressFill'),
-    progressPct: document.getElementById('progressPct'),
-    levelLabel: document.getElementById('levelLabel'),
-    nodeChain: document.getElementById('nodeChain'),
-    misList: document.getElementById('misList'),
-    srcList: document.getElementById('srcList'),
-    chatScroll: document.getElementById('chatScroll'),
-    companion: document.getElementById('companion'),
-    liveDot: document.getElementById('liveDot'),
-    liveText: document.getElementById('liveText'),
-    recoveryWrap: document.getElementById('recoveryWrap'),
-    recoveryText: document.getElementById('recoveryText'),
-    recoveryRefs: document.getElementById('recoveryRefs'),
-    bannerWrap: document.getElementById('bannerWrap'),
-    bannerBox: document.getElementById('bannerBox'),
-    bannerIcon: document.getElementById('bannerIcon'),
-    bannerText: document.getElementById('bannerText'),
-    textInput: document.getElementById('textInput'),
-    sendBtn: document.getElementById('sendBtn'),
-    quickRow: document.getElementById('quickRow'),
-    toastStack: document.getElementById('toastStack'),
-  };
-
-  el.sessionLabel.textContent = sessionId.slice(0, 8);
-
-  // "mastered" từ backend = đã đủ K1-K4, KHÔNG đồng nghĩa đã xong phiên —
-  // backend còn cần transfer_passed (agent_graph.py decide_route) trước khi
-  // thật sự dừng, tín hiệu đó nằm ở result.mastery_complete, không phải status.
-  const STATUS_META = {
-    partial:         { tone: 'neutral',  label: 'Đang tiến bộ' },
-    misconception:   { tone: 'risk',     label: 'Đang sửa hiểu sai' },
-    needs_recovery:  { tone: 'warn',     label: 'Cần ôn lại' },
-    copied_source:   { tone: 'warn',     label: 'Diễn đạt lại giúp mình' },
-    out_of_scope:    { tone: 'neutral',  label: 'Ngoài phạm vi bài học' },
-  };
-  const MOOD_BY_STATUS = {
-    misconception: 'confused',
-    needs_recovery: 'worried',
-    copied_source: 'thinking',
-    out_of_scope: 'puzzled',
-    partial: 'thinking',
-  };
-
-  function statusMeta(status, masteryComplete) {
-    if (status === 'mastered') {
-      return masteryComplete
-        ? { tone: 'mastered', label: 'Đã hoàn thành phiên' }
-        : { tone: 'warn', label: 'Đủ 4 ý · đang chờ ví dụ chuyển giao' };
-    }
-    return STATUS_META[status] || { tone: 'neutral', label: status || 'Chưa bắt đầu' };
-  }
-
-  function moodFor(status, masteryComplete) {
-    if (status === 'mastered') return masteryComplete ? 'happy' : 'thinking';
-    return MOOD_BY_STATUS[status] || 'idle';
-  }
-
-  // Theo dõi trạng thái trước đó để phát hiện "vừa mới đạt được" — chỉ nổ hiệu ứng/toast
-  // cho sự kiện mới, không lặp lại khi chỉ đơn thuần vẽ lại UI (ví dụ khi khôi phục phiên).
-  let prevCovered = new Set();
-  let wasMastered = false;
-
-  // ---------- Render: status / progress / mood ----------
-  function renderStatus(status, masteryComplete) {
-    const meta = statusMeta(status, masteryComplete);
-    el.statusBadge.setAttribute('data-tone', meta.tone);
-    el.statusText.textContent = meta.label;
-  }
-
-  function renderProgress(progress, mastered) {
-    progress = Math.max(0, Math.min(100, progress || 0));
-    el.progressFill.style.width = progress + '%';
-    el.progressFill.setAttribute('data-tone', mastered ? 'mastered' : '');
-    el.progressPct.textContent = progress + '%';
-    let level = LEVEL_MAP[0].text;
-    for (const step of LEVEL_MAP) { if (progress >= step.min) level = step.text; }
-    el.levelLabel.textContent = level;
-  }
-
-  function setMood(mood) { el.companion.setAttribute('data-mood', mood || 'idle'); }
-
-  // ---------- Render: node-chain skill tree ----------
-  function renderNodeChain(covered, activeGap, animate) {
-    const coveredSet = new Set(covered || []);
-    const rows = [...el.nodeChain.querySelectorAll('.node-row')];
-    const connectors = [...el.nodeChain.querySelectorAll('.connector')];
-
-    // Trạng thái từng node: độc lập, đúng theo ý nghĩa câu trả lời — agent không
-    // bắt buộc học viên trả lời theo thứ tự K1→K2→K3→K4, chỉ ưu tiên HỎI theo
-    // thứ tự đó khi còn thiếu (POINT_PRIORITY trong agent_core.py), nên một điểm
-    // ở sau hoàn toàn có thể sáng trước một điểm ở trước.
-    rows.forEach(row => {
-      const id = row.getAttribute('data-point');
-      const isCovered = coveredSet.has(id);
-      const wasCovered = prevCovered.has(id);
-      row.setAttribute('data-state', isCovered ? 'covered' : (id === activeGap ? 'active' : 'pending'));
-      if (animate && isCovered && !wasCovered) {
-        pushToast(`✓ ${id} hoàn thành · +${POINT_WEIGHTS[id]}đ`, 'success');
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        });
+        let payload = null;
+        try { payload = await response.json(); } catch (_) {}
+        if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
+        return payload;
       }
-    });
 
-    // Dây nối giữa hai node chỉ sáng khi CẢ HAI đầu đã xong — tránh vẽ một
-    // đường sáng chạy xuyên qua node còn tối khi thứ tự thực tế bị đảo.
-    connectors.forEach((connector, i) => {
-      const idA = rows[i].getAttribute('data-point');
-      const idB = rows[i + 1].getAttribute('data-point');
-      const linked = coveredSet.has(idA) && coveredSet.has(idB);
-      const wasLinked = prevCovered.has(idA) && prevCovered.has(idB);
-      if (linked) {
-        connector.classList.add('filled');
-        if (animate && !wasLinked) {
-          connector.classList.add('spark-run');
-          setTimeout(() => connector.classList.remove('spark-run'), 700);
+      function toast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add("show");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => els.toast.classList.remove("show"), 2600);
+      }
+
+      function currentLesson() {
+        return state.lessons.find((lesson) => lesson.id === state.activeSession?.lesson_id);
+      }
+
+      function renderRuntime() {
+        const online = state.provider === "openai";
+        els.runtimeBadge.classList.toggle("online", online);
+        els.runtimeText.textContent = online ? `OpenAI · ${state.model}` : "Offline rules";
+      }
+
+      function renderSessions() {
+        els.sessionCount.textContent = state.sessions.length;
+        els.sessionList.innerHTML = "";
+        if (!state.sessions.length) {
+          els.sessionList.innerHTML = '<div class="empty-note">Chưa có phiên học.</div>';
+          return;
         }
-      } else {
-        connector.classList.remove('filled');
+        for (const session of state.sessions) {
+          const button = document.createElement("button");
+          button.className = "session-card" + (state.activeSession?.id === session.id ? " active" : "");
+          button.innerHTML = `<div class="row"><strong>${escapeHtml(session.title)}</strong><small>${session.progress}%</small></div><p>${escapeHtml(session.lesson_title)} · ${escapeHtml(session.preview || "Phiên mới")}</p>`;
+          button.addEventListener("click", () => loadSession(session.id));
+          els.sessionList.appendChild(button);
+        }
       }
-    });
 
-    prevCovered = coveredSet;
-  }
-
-  function renderMisconceptions(list, animate) {
-    const items = list || [];
-    if (items.length === 0) {
-      el.misList.innerHTML = '<p class="mis-empty">Chưa phát hiện hiểu sai nào.</p>';
-      return;
-    }
-    el.misList.innerHTML = items.map(id =>
-      `<div class="mis-item"><span>⚠</span><span>${id} · cần sửa trước khi hoàn thành</span></div>`
-    ).join('');
-    if (animate) pushToast(`⚠ Phát hiện hiểu sai ${items[0]} — cần sửa trước khi tiếp tục`, 'danger');
-  }
-
-  function renderSources(cards) {
-    if (!cards || cards.length === 0) {
-      el.srcList.innerHTML = '<p class="src-empty">Chưa có trích dẫn.</p>';
-      return;
-    }
-    el.srcList.innerHTML = cards.map(c =>
-      `<div class="src-item"><div class="src-id">${c.id}</div><div class="src-text">${escapeHtml(c.paraphrase || '')}</div></div>`
-    ).join('');
-  }
-
-  function showRecovery(card, sourceIds) {
-    if (!card) { hideRecovery(); return; }
-    el.recoveryText.textContent = card.text || '';
-    el.recoveryRefs.textContent = (sourceIds && sourceIds.length) ? 'Nguồn: ' + sourceIds.join(', ') : '';
-    el.recoveryWrap.classList.add('open');
-  }
-  function hideRecovery() { el.recoveryWrap.classList.remove('open'); }
-
-  // Banner bước tiếp theo — tín hiệu tường minh, không bắt người dùng phải tự
-  // suy ra từ phần trăm progress bar.
-  function showBanner(icon, text, tone) {
-    el.bannerIcon.textContent = icon;
-    el.bannerText.textContent = text;
-    el.bannerBox.setAttribute('data-tone', tone);
-    el.bannerWrap.classList.add('open');
-  }
-  function hideBanner() { el.bannerWrap.classList.remove('open'); }
-
-  function setComposerLocked(locked) {
-    el.textInput.disabled = locked;
-    el.sendBtn.disabled = locked;
-    el.textInput.placeholder = locked
-      ? 'Phiên đã hoàn thành — bấm "Phiên mới" để luyện lại'
-      : 'Giải thích cho học trò AI nghe...';
-    [...el.quickRow.children].forEach(btn => { btn.disabled = locked; btn.style.opacity = locked ? 0.4 : ''; });
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  // ---------- Toasts ----------
-  function pushToast(text, tone) {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.setAttribute('data-tone', tone || 'neutral');
-    t.textContent = text;
-    el.toastStack.appendChild(t);
-    setTimeout(() => t.remove(), 3100);
-  }
-
-  // ---------- Mastery celebration ----------
-  function spawnBurst(target) {
-    const colors = true;
-    for (let i = 0; i < 14; i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.3;
-      const dist = 26 + Math.random() * 18;
-      p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
-      p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
-      target.appendChild(p);
-      setTimeout(() => p.remove(), 900);
-    }
-  }
-
-  // ---------- Chat ----------
-  function scrollToBottom() {
-    requestAnimationFrame(() => { el.chatScroll.scrollTop = el.chatScroll.scrollHeight; });
-  }
-
-  // ---------- Chat transcript (localStorage, theo từng session_id) ----------
-  // Backend chỉ lưu tổng hợp trạng thái + kết quả của LƯỢT GẦN NHẤT (xem
-  // GraphSessionRunner.get_state trong agent_graph.py), không lưu toàn bộ hội
-  // thoại. Muốn F5 lại vẫn thấy đủ các bong bóng chat cũ, phải tự lưu ở trình
-  // duyệt — chỉ tồn tại trên máy/trình duyệt này, không đồng bộ nơi khác.
-  function transcriptKey(id) { return 'd3_transcript_' + id; }
-  function loadTranscript(id) {
-    try { return JSON.parse(localStorage.getItem(transcriptKey(id)) || '[]'); }
-    catch (e) { return []; }
-  }
-  function saveMessageToTranscript(role, text) {
-    try {
-      const arr = loadTranscript(sessionId);
-      arr.push({ role, text });
-      localStorage.setItem(transcriptKey(sessionId), JSON.stringify(arr));
-    } catch (e) { /* localStorage đầy hoặc bị chặn — không chặn luồng chat */ }
-  }
-
-  function addMessage(role, text, opts) {
-    opts = opts || {};
-    const row = document.createElement('div');
-    row.className = 'row ' + role;
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
-    row.appendChild(bubble);
-    el.chatScroll.appendChild(row);
-    scrollToBottom();
-    if (opts.persist !== false) saveMessageToTranscript(role, text);
-  }
-
-  let typingRow = null;
-  function showTyping() {
-    el.liveDot.classList.add('busy');
-    el.liveText.textContent = 'Đang suy nghĩ...';
-    setMood('thinking');
-    typingRow = document.createElement('div');
-    typingRow.className = 'row agent';
-    typingRow.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
-    el.chatScroll.appendChild(typingRow);
-    scrollToBottom();
-  }
-  function hideTyping() {
-    el.liveDot.classList.remove('busy');
-    el.liveText.textContent = 'Đang chờ bạn dạy';
-    if (typingRow) { typingRow.remove(); typingRow = null; }
-  }
-
-  // ---------- API ----------
-  async function callAgent(explanation, reset) {
-    const res = await fetch(`${API_BASE}/api/teach`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, student_explanation: explanation, reset: !!reset }),
-    });
-    let payload;
-    try { payload = await res.json(); } catch (e) { payload = null; }
-    if (!res.ok) {
-      const msg = (payload && payload.message) ? payload.message : `HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return payload;
-  }
-
-  function applyResult(result, animate) {
-    renderStatus(result.status, result.mastery_complete);
-    renderProgress(result.progress, result.mastery_complete);
-    renderNodeChain(result.covered_points, result.target_gap, animate);
-    renderMisconceptions(result.misconceptions, animate);
-    renderSources(result.source_cards);
-    setMood(moodFor(result.status, result.mastery_complete));
-
-    if (result.next_action === 'SHOW_RECOVERY' && result.recovery_card) {
-      showRecovery(result.recovery_card, result.evidence_source_ids);
-    } else {
-      hideRecovery();
-    }
-
-    // Tín hiệu dừng tường minh — không phụ thuộc vào việc đọc % progress bar.
-    if (result.mastery_complete) {
-      showBanner('✅', 'Đã hoàn thành phiên — đủ K1–K4, không còn hiểu sai, đã vượt ví dụ chuyển giao. Bấm "Phiên mới" để luyện lại.', 'success');
-      setComposerLocked(true);
-    } else {
-      setComposerLocked(false);
-      if (result.next_action === 'ASK_TRANSFER') {
-        showBanner('🎯', 'Chỉ còn một bước: hãy nêu một VÍ DỤ MỚI cho thấy câu trả lời nghe hợp lý nhưng vẫn cần được kiểm chứng.', 'info');
-      } else {
-        hideBanner();
+      function renderActiveSession() {
+        const session = state.activeSession;
+        const lesson = currentLesson();
+        if (!session || !lesson) return;
+        els.progressArea.classList.remove("empty");
+        els.lessonTitle.textContent = lesson.title;
+        els.trackLabel.textContent = lesson.track;
+        els.taskCard.textContent = lesson.task;
+        els.sessionIdLabel.textContent = `session ${session.id.slice(0, 8)}`;
+        els.progressText.textContent = `${session.progress}%`;
+        els.progressFill.style.width = `${session.progress}%`;
+        els.pointRow.innerHTML = "";
+        const covered = new Set(session.covered_points || []);
+        for (const point of lesson.points) {
+          const div = document.createElement("div");
+          div.className = "point" + (covered.has(point.id) ? " covered" : "");
+          div.innerHTML = `<b>${covered.has(point.id) ? "✓" : point.id} · ${point.weight}%</b><span title="${escapeHtml(point.label)}">${escapeHtml(point.label)}</span>`;
+          els.pointRow.appendChild(div);
+        }
+        renderMessages(session.messages || []);
+        renderStarters(lesson.starter_prompts || []);
+        renderStatus(session.status);
+        renderSessions();
       }
-    }
 
-    if (!result.citations_valid) {
-      console.warn('citations_valid = false cho request này — kiểm tra retrieval.', result);
-    }
-
-    if (result.mastery_complete && animate && !wasMastered) {
-      setMood('happy');
-      spawnBurst(el.companion);
-      pushToast('🎉 Hoàn thành phiên — đủ K1–K4, không còn hiểu sai!', 'mastery');
-    }
-    wasMastered = !!result.mastery_complete;
-  }
-
-  function renderResult(result) {
-    addMessage('agent', result.agent_response);
-    applyResult(result, true);
-  }
-
-  async function handleSend(explanationOverride) {
-    const text = (explanationOverride !== undefined ? explanationOverride : el.textInput.value).trim();
-    if (!text) return;
-    addMessage('user', text);
-    el.textInput.value = '';
-    el.sendBtn.disabled = true;
-    el.textInput.disabled = true;
-    showTyping();
-
-    try {
-      const result = await callAgent(text, false);
-      hideTyping();
-      renderResult(result);
-    } catch (err) {
-      hideTyping();
-      setMood('confused');
-      addMessage('system', 'Lỗi kết nối tới agent: ' + err.message, { persist: false });
-      console.error(err);
-    } finally {
-      // Nếu phiên vừa được xác nhận hoàn thành, applyResult() đã khoá composer
-      // ở trên — đừng mở khoá lại ở đây, chỉ mở khi phiên vẫn đang tiếp diễn.
-      setComposerLocked(wasMastered);
-      if (!wasMastered) el.textInput.focus();
-    }
-  }
-
-  async function resetSession() {
-    // "Phiên mới" bỏ lại phiên hiện tại — dữ liệu tổng hợp (K1-K4, mastery...)
-    // của nó vẫn còn nguyên trong sessions.sqlite3 ở server, nhưng giao diện
-    // này sẽ không quay lại xem được nữa (chưa có màn hình chọn phiên cũ).
-    const proceed = window.confirm(
-      'Bắt đầu phiên mới sẽ rời khỏi đoạn chat hiện tại.\n\n' +
-      'Dữ liệu tiến độ của phiên này vẫn được lưu ở server, nhưng giao diện ' +
-      'hiện chưa có cách quay lại xem — coi như bắt đầu một buổi học mới.\n\n' +
-      'Tiếp tục?'
-    );
-    if (!proceed) return;
-
-    sessionId = newSessionId();
-    localStorage.setItem('d3_session_id', sessionId);
-    el.sessionLabel.textContent = sessionId.slice(0, 8);
-    el.chatScroll.innerHTML = '';
-    hideRecovery();
-    hideBanner();
-    setComposerLocked(false);
-    prevCovered = new Set();
-    wasMastered = false;
-    renderStatus(null);
-    renderProgress(0, false);
-    renderNodeChain([], null, false);
-    renderMisconceptions([], false);
-    renderSources([]);
-    setMood('idle');
-    addMessage('agent', GREETING);
-  }
-
-  // ---------- Wire up ----------
-  el.sendBtn.addEventListener('click', () => handleSend());
-  el.textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
-  el.resetBtn.addEventListener('click', resetSession);
-  el.quickRow.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-demo]');
-    if (!btn) return;
-    handleSend(DEMO_TEXTS[Number(btn.getAttribute('data-demo'))]);
-  });
-
-  // ---------- Boot ----------
-  async function fetchLatestState() {
-    try {
-      const res = await fetch(`${API_BASE}/api/session/${sessionId}`);
-      if (res.ok) {
-        const result = await res.json();
-        if (result && result.agent_response) return result;
+      function showWelcome() {
+        state.activeSession = null;
+        els.trackLabel.textContent = "Cuộc trò chuyện mới";
+        els.lessonTitle.textContent = "Bạn muốn ôn lại phần nào?";
+        els.progressArea.classList.add("empty");
+        els.taskCard.textContent = "Agent sẽ tự xác định bài học từ prompt đầu tiên rồi nạp rubric và nguồn phù hợp.";
+        els.sessionIdLabel.textContent = "";
+        els.starters.innerHTML = "";
+        els.statusBanner.className = "status-banner";
+        renderSources([]);
+        els.chat.innerHTML = `
+          <div class="welcome">
+            <div class="welcome-kicker">Teach-back tự định tuyến</div>
+            <h3>Bắt đầu bằng điều bạn đang muốn ôn</h3>
+            <p>Không cần chọn bài trước. Hãy nói tự nhiên, ví dụ “Mình muốn ôn cách chọn metric cho sản phẩm AI, bạn đóng vai học viên nhé”. Agent sẽ tìm bài phù hợp, kiểm tra knowledge và lưu phiên sau tin nhắn đầu tiên.</p>
+            <div class="welcome-grid" id="welcomeGrid"></div>
+          </div>`;
+        const grid = $("welcomeGrid");
+        for (const lesson of state.lessons) {
+          const button = document.createElement("button");
+          button.className = "welcome-card";
+          button.innerHTML = `<small>${escapeHtml(lesson.track)}</small><strong>${escapeHtml(lesson.title)}</strong>`;
+          button.addEventListener("click", () => {
+            els.messageInput.value = `Mình muốn ôn lại phần ${lesson.title}. Bạn hãy đóng vai học viên và đặt câu hỏi để mình dạy lại nhé.`;
+            els.messageInput.focus();
+            resizeInput();
+          });
+          grid.appendChild(button);
+        }
+        renderSessions();
+        els.messageInput.focus();
       }
-    } catch (err) {
-      console.warn('Không thể lấy trạng thái phiên từ server.', err);
-    }
-    return null;
-  }
 
-  async function boot() {
-    renderStatus(null);
-    renderProgress(0, false);
-    setMood('idle');
+      function renderMessages(messages) {
+        els.chat.innerHTML = "";
+        for (const message of messages) addMessageNode(message.role, message.content, message.metadata, false);
+        const lastWithSources = [...messages].reverse().find((m) => m.metadata?.source_cards?.length);
+        renderSources(lastWithSources?.metadata?.source_cards || []);
+        scrollChat();
+      }
 
-    const transcript = loadTranscript(sessionId);
-    if (transcript.length > 0) {
-      // Có lịch sử chat thật đã lưu trên trình duyệt này — phát lại nguyên
-      // vẹn (không chỉ câu cuối), rồi vẽ lại thanh trạng thái từ server.
-      transcript.forEach(m => addMessage(m.role, m.text, { persist: false }));
-      const result = await fetchLatestState();
-      if (result) { applyResult(result, false); return; }
-      addMessage('system', 'Không lấy được trạng thái mới nhất từ server — có thể server chưa chạy.', { persist: false });
-      return;
-    }
+      function addMessageNode(role, content, metadata = {}, scroll = true) {
+        const row = document.createElement("div");
+        row.className = `message ${role}`;
+        if (role !== "user") {
+          const avatar = document.createElement("div");
+          avatar.className = "avatar";
+          avatar.textContent = role === "assistant" ? "AI" : "!";
+          row.appendChild(avatar);
+        }
+        const wrap = document.createElement("div");
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = content;
+        wrap.appendChild(bubble);
+        if (metadata.provider) {
+          const meta = document.createElement("div");
+          meta.className = "message-meta";
+          meta.textContent = metadata.provider === "openai" ? `OpenAI · ${metadata.model}` : "Offline baseline";
+          wrap.appendChild(meta);
+        }
+        row.appendChild(wrap);
+        els.chat.appendChild(row);
+        if (scroll) scrollChat();
+      }
 
-    // Không có lịch sử trên trình duyệt này (lần đầu mở, hoặc đã xoá dữ liệu
-    // trình duyệt) nhưng server vẫn còn nhớ — chỉ khôi phục được tóm tắt lượt
-    // gần nhất, không có đủ toàn bộ hội thoại để phát lại.
-    const result = await fetchLatestState();
-    if (result) {
-      addMessage('system', `Đã khôi phục tóm tắt phiên trước (chưa có lịch sử chat trên trình duyệt này) · lượt ${result.turn}`, { persist: false });
-      addMessage('agent', result.agent_response);
-      applyResult(result, false);
-      return;
-    }
+      function showTyping() {
+        const row = document.createElement("div");
+        row.className = "message assistant";
+        row.id = "typingRow";
+        row.innerHTML = '<div class="avatar">AI</div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div>';
+        els.chat.appendChild(row);
+        scrollChat();
+      }
+      function hideTyping() { $("typingRow")?.remove(); }
+      function scrollChat() { requestAnimationFrame(() => { els.chat.scrollTop = els.chat.scrollHeight; }); }
 
-    addMessage('agent', GREETING);
-  }
-  boot();
-})();
-</script>
+      function renderStarters(prompts) {
+        els.starters.innerHTML = "";
+        for (const prompt of prompts) {
+          const button = document.createElement("button");
+          button.className = "chip";
+          button.textContent = prompt;
+          button.addEventListener("click", () => {
+            els.messageInput.value = prompt + " Theo mình, ";
+            els.messageInput.focus();
+            resizeInput();
+          });
+          els.starters.appendChild(button);
+        }
+      }
+
+      function renderSources(sources) {
+        els.sourceList.innerHTML = "";
+        if (!sources?.length) {
+          els.sourceList.innerHTML = '<div class="empty-note">Nguồn sẽ xuất hiện sau khi bạn dạy lại.</div>';
+          return;
+        }
+        for (const source of sources) {
+          const div = document.createElement("article");
+          div.className = "source";
+          div.innerHTML = `<b>${escapeHtml(source.id)}</b><small>${escapeHtml(source.file)} · ${escapeHtml(source.locator)}</small><p>${escapeHtml(source.paraphrase)}</p>`;
+          els.sourceList.appendChild(div);
+        }
+      }
+
+      function renderStatus(status) {
+        const messages = {
+          out_of_scope: "Nội dung này chưa có trong knowledge hiện tại; tiến độ học được giữ nguyên.",
+          needs_recovery: "Chưa đủ bằng chứng — hãy dùng gợi ý trong phản hồi để thử lại.",
+          mastered: "Hoàn thành: bạn đã dạy lại đủ các ý cốt lõi của bài.",
+        };
+        els.statusBanner.className = "status-banner";
+        if (messages[status]) {
+          els.statusBanner.textContent = messages[status];
+          els.statusBanner.classList.add("show", status);
+        }
+      }
+
+      async function refreshSessions() {
+        const payload = await api("/api/sessions?limit=40");
+        state.sessions = payload.sessions;
+        renderSessions();
+      }
+
+      async function clearHistory() {
+        if (!state.sessions.length) return;
+        const confirmed = window.confirm("Xóa toàn bộ lịch sử teach-back đã lưu trên backend? Thao tác này không thể hoàn tác.");
+        if (!confirmed) return;
+        try {
+          const result = await api("/api/sessions/clear", { method: "POST", body: "{}" });
+          state.sessions = [];
+          showWelcome();
+          toast(`Đã xóa ${result.deleted_sessions} phiên.`);
+        } catch (error) { toast(error.message); }
+      }
+
+      async function loadSession(sessionId) {
+        try {
+          state.activeSession = await api(`/api/sessions/${encodeURIComponent(sessionId)}`);
+          renderActiveSession();
+        } catch (error) { toast(error.message); }
+      }
+
+      async function sendMessage() {
+        const content = els.messageInput.value.trim();
+        if (!content || state.sending) return;
+        if (state.provider === "openai" && !state.apiKey && !state.runtime?.server_has_api_key) {
+          openSettings();
+          toast("Nhập API key để dùng OpenAI realtime.");
+          return;
+        }
+        state.sending = true;
+        const startingChat = !state.activeSession;
+        els.sendBtn.disabled = true;
+        els.messageInput.disabled = true;
+        if (startingChat) els.chat.innerHTML = "";
+        addMessageNode("user", content);
+        els.messageInput.value = "";
+        resizeInput();
+        showTyping();
+        try {
+          const endpoint = startingChat
+            ? "/api/chat"
+            : `/api/sessions/${encodeURIComponent(state.activeSession.id)}/messages`;
+          const result = await api(endpoint, {
+            method: "POST",
+            body: JSON.stringify({
+              content,
+              provider: state.provider,
+              model: state.model,
+              api_key: state.apiKey,
+            }),
+          });
+          hideTyping();
+          if (startingChat && result.needs_clarification) {
+            addMessageNode("assistant", result.agent_response, { provider: state.provider, model: state.model });
+            return;
+          }
+          if (startingChat) {
+            state.activeSession = result.session;
+            await refreshSessions();
+            renderActiveSession();
+            toast(`Đã nhận diện: ${result.routed_lesson.title}`);
+            return;
+          }
+          if (result.session_switched && result.session) {
+            state.activeSession = result.session;
+            await refreshSessions();
+            renderActiveSession();
+            toast("Đã chuyển chủ đề: " + result.routed_lesson.title);
+            return;
+          }
+          addMessageNode("assistant", result.agent_response, result.message.metadata);
+          state.activeSession.status = result.status;
+          state.activeSession.progress = result.progress;
+          state.activeSession.covered_points = result.covered_points;
+          state.activeSession.misconceptions = result.misconceptions;
+          state.activeSession.messages.push(
+            { role: "user", content, metadata: {} },
+            result.message
+          );
+          renderSources(result.source_cards);
+          renderStatus(result.status);
+          renderActiveSessionStateOnly();
+          await refreshSessions();
+        } catch (error) {
+          hideTyping();
+          addMessageNode("system", `Không gửi được: ${error.message}`);
+        } finally {
+          state.sending = false;
+          els.sendBtn.disabled = false;
+          els.messageInput.disabled = false;
+          els.messageInput.focus();
+        }
+      }
+
+      function renderActiveSessionStateOnly() {
+        const session = state.activeSession;
+        const lesson = currentLesson();
+        els.progressText.textContent = `${session.progress}%`;
+        els.progressFill.style.width = `${session.progress}%`;
+        const covered = new Set(session.covered_points || []);
+        [...els.pointRow.children].forEach((node, index) => {
+          const point = lesson.points[index];
+          node.classList.toggle("covered", covered.has(point.id));
+          node.querySelector("b").textContent = `${covered.has(point.id) ? "✓" : point.id} · ${point.weight}%`;
+        });
+      }
+
+      function openSettings() {
+        els.providerInput.value = state.provider;
+        els.modelInput.value = state.model;
+        els.apiKeyInput.value = state.apiKey;
+        updateSettingsVisibility();
+        els.settingsModal.classList.add("show");
+      }
+      function closeSettings() { els.settingsModal.classList.remove("show"); }
+      function updateSettingsVisibility() {
+        const online = els.providerInput.value === "openai";
+        els.modelField.style.display = online ? "block" : "none";
+        els.keyField.style.display = online ? "block" : "none";
+      }
+      function saveSettings() {
+        state.provider = els.providerInput.value;
+        state.model = els.modelInput.value.trim() || "gpt-5-mini";
+        state.apiKey = els.apiKeyInput.value.trim();
+        localStorage.setItem("tb_provider", state.provider);
+        localStorage.setItem("tb_model", state.model);
+        renderRuntime();
+        closeSettings();
+        toast(state.provider === "openai" ? "Đã bật OpenAI realtime." : "Đã chuyển sang offline.");
+      }
+
+      function resizeInput() {
+        els.messageInput.style.height = "auto";
+        els.messageInput.style.height = Math.min(els.messageInput.scrollHeight, 130) + "px";
+      }
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+        })[char]);
+      }
+
+      async function boot() {
+        try {
+          const [runtime, lessonPayload, sessionPayload] = await Promise.all([
+            api("/api/runtime"), api("/api/lessons"), api("/api/sessions?limit=40"),
+          ]);
+          state.runtime = runtime;
+          state.lessons = lessonPayload.lessons;
+          state.sessions = sessionPayload.sessions;
+          if (!localStorage.getItem("tb_provider")) state.provider = runtime.default_provider;
+          if (!localStorage.getItem("tb_model")) state.model = runtime.default_model;
+          els.keyPolicy.textContent = runtime.api_key_policy + (runtime.server_has_api_key ? " Server đã có key từ biến môi trường." : "");
+          renderRuntime();
+          renderSessions();
+          showWelcome();
+        } catch (error) {
+          els.chat.innerHTML = `<div class="empty-note">Không tải được backend: ${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      els.sendBtn.addEventListener("click", sendMessage);
+      els.messageInput.addEventListener("input", resizeInput);
+      els.messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); }
+      });
+      els.newSessionBtn.addEventListener("click", showWelcome);
+      els.mobileNewBtn.addEventListener("click", showWelcome);
+      els.clearHistoryBtn.addEventListener("click", clearHistory);
+      els.settingsBtn.addEventListener("click", openSettings);
+      els.closeSettingsBtn.addEventListener("click", closeSettings);
+      els.cancelSettingsBtn.addEventListener("click", closeSettings);
+      els.saveSettingsBtn.addEventListener("click", saveSettings);
+      els.providerInput.addEventListener("change", updateSettingsVisibility);
+      els.toggleKeyBtn.addEventListener("click", () => {
+        const visible = els.apiKeyInput.type === "text";
+        els.apiKeyInput.type = visible ? "password" : "text";
+        els.toggleKeyBtn.textContent = visible ? "Hiện" : "Ẩn";
+      });
+      els.settingsModal.addEventListener("click", (event) => {
+        if (event.target === els.settingsModal) closeSettings();
+      });
+      boot();
+    })();
+  </script>
 </body>
 </html>
