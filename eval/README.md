@@ -6,9 +6,11 @@ Một học viên dạy lại cho agent: **“Vì sao LLM có thể bịa (hallu
 
 Ground truth: `../knowledge/d3-llm-hallucination-ground-truth.json`.
 
-Golden set chính và duy nhất được runner sử dụng: `golden_set.json`, gồm 20 cách trả lời được gắn taxonomy 4 lớp. Version 1.1 có cả trạng thái nhiều lượt, regression và ca đạt `COMPLETE_SESSION`. File `d3-golden-set.jsonl` là bản nháp lịch sử, không được dùng để chấm và có thể có nhãn cũ.
+Golden set chính và duy nhất được runner sử dụng: `golden_set.json`, gồm 28 cách trả lời được gắn taxonomy 4 lớp. Version 1.2 bổ sung prompt injection/out-of-scope, câu đúng phủ định một hiểu sai, câu vừa đúng vừa sai, sai lặp lại cần recovery và ca sửa được misconception. File `d3-golden-set.jsonl` là bản nháp lịch sử, không được dùng để chấm và có thể có nhãn cũ.
 
-Kết quả OpenAI v1.0 được giữ ở `run_results_openai_v1.md` và `results_openai_v1.jsonl` để so sánh trước-sau. `run_results.md` luôn là lượt chạy gần nhất của dataset hiện hành; kiểm tra trường `Provider` trước khi dùng con số trong demo.
+Kết quả OpenAI v1.0 được giữ ở `run_results_openai_v1.md` và `results_openai_v1.jsonl` để so sánh trước-sau. `run_results.md` luôn là lượt chạy gần nhất của dataset hiện hành; kiểm tra trường `Provider` trước khi dùng con số trong demo. Mỗi lần chạy mới còn tạo bộ ba `*_summary.json`, `*_results.jsonl`, `*_report.md` và model-call log trong `runs/`, nên các lần chạy không ghi đè lịch sử audit.
+
+`run_history.jsonl` là chỉ mục cộng dồn giữa các lần chạy. Mỗi dòng chứa run ID, provider/model, accuracy toàn bộ và accuracy theo từng taxonomy. Trong file `*_results.jsonl`, mỗi case lưu cả `session_id`, `turn`, provider, kết quả pass/fail và `accuracy` 0 hoặc 1. API key không được ghi vào bất kỳ artifact nào.
 
 - đúng nhưng diễn đạt khác tài liệu;
 - đúng một phần;
@@ -60,14 +62,28 @@ Một case chỉ đạt khi đồng thời:
 4. Có ít nhất một `evidence_source_id` thuộc `required_evidence_any`, trừ case ngoài phạm vi.
 5. Câu hỏi tiếp theo không tiết lộ toàn bộ đáp án.
 6. Source ID trả về tồn tại trong ground truth.
+7. Kết quả có `diagnosis` có cấu trúc; nếu sai, phải có misconception ID và lý do sai.
+8. Mỗi claim đúng được ghi trong `grounded_claims` với source ID thuộc registry.
 
 Chỉ số CP3 nên công bố:
 
 ```text
-pass_rate = số case đạt đủ 6 điều kiện / 20
+pass_rate = số case đạt toàn bộ điều kiện / 28
 ```
 
 Ghi cả bảng lỗi; không chỉ ghi phần trăm tổng.
+
+Chạy baseline không tốn API:
+
+```powershell
+D:\conda\python.exe codebase/run_eval.py --provider offline
+```
+
+Chạy model thật sau khi đã đặt `OPENAI_API_KEY`:
+
+```powershell
+D:\conda\python.exe codebase/run_eval.py --provider openai
+```
 
 ## Bảo mật
 

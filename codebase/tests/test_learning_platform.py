@@ -221,6 +221,59 @@ class LearningPlatformTests(unittest.TestCase):
         self.assertEqual(result["intent"], "teachback_answer")
         self.assertEqual(result["progress"], 25)
 
+    def test_source_request_returns_locator_bound_transcript_excerpt(self) -> None:
+        platform = self.make_platform()
+        session = platform.create_session("why-llm-hallucinates")
+        result = platform.send_message(
+            session["id"],
+            "Cho mình xem trích dẫn transcript về cơ chế sinh token.",
+            provider="offline",
+        )
+        transcript_sources = [
+            source for source in result["source_cards"] if source["type"] == "transcript"
+        ]
+        self.assertEqual(result["intent"], "source_request")
+        self.assertEqual(result["progress"], 0)
+        self.assertTrue(result["citations_valid"])
+        self.assertTrue(transcript_sources)
+        self.assertTrue(all(source.get("quote") for source in transcript_sources))
+        self.assertTrue(all(len(source["quote"]) <= 360 for source in transcript_sources))
+        self.assertIn(transcript_sources[0]["id"], result["agent_response"])
+
+    def test_repeated_misconception_escalates_to_direct_recovery(self) -> None:
+        platform = self.make_platform()
+        session = platform.create_session("why-llm-hallucinates")
+        wrong = "Temperature bằng 0 thì luôn đúng và LLM không thể bịa."
+        first = platform.send_message(session["id"], wrong, provider="offline")
+        second = platform.send_message(session["id"], wrong, provider="offline")
+        self.assertEqual(first["status"], "misconception")
+        self.assertEqual(first["diagnosis"]["type"], "misconception")
+        self.assertIn("không bổ sung tri thức", first["agent_response"])
+        self.assertEqual(second["status"], "needs_recovery")
+        self.assertEqual(second["message"]["metadata"]["failure_streak"], 2)
+        self.assertEqual(second["message"]["metadata"]["target_point_id"], "K4")
+        self.assertIn("gợi ý trực tiếp", second["agent_response"])
+        self.assertEqual(second["progress"], 0)
+
+    def test_correct_answer_has_allowlisted_sources_and_diagnosis(self) -> None:
+        platform = self.make_platform()
+        session = platform.create_session("why-llm-hallucinates")
+        result = platform.send_message(
+            session["id"],
+            "LLM dự đoán token tiếp theo theo một phân bố xác suất.",
+            provider="offline",
+        )
+        registered = {
+            source["id"]
+            for source in platform.catalog.get("why-llm-hallucinates")["sources"]
+        }
+        self.assertEqual(result["diagnosis"]["type"], "supported")
+        self.assertTrue(result["source_cards"])
+        self.assertTrue(result["citations_valid"])
+        self.assertLessEqual(
+            {source["id"] for source in result["source_cards"]}, registered
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -215,11 +215,27 @@ def detect_explicit_points(value: str) -> set[str]:
 
 def detect_explicit_misconceptions(value: str) -> set[str]:
     text = normalize_text(value)
-    return {
+    found = {
         misconception_id
         for misconception_id, patterns in MISCONCEPTION_PATTERNS.items()
         if matches_any(text, patterns)
     }
+    # Do not turn an explicit rejection of an absolute claim into the claim
+    # itself merely because both contain words such as "RAG" and "100%".
+    if "M4" in found and matches_any(
+        text,
+        (
+            r"rag.{0,45}khong.{0,20}(dam bao|chinh xac 100|loai bo hoan toan|het hallucination)",
+            r"rag.{0,45}chi.{0,20}(giam|ho tro)",
+        ),
+    ):
+        found.remove("M4")
+    if "M3" in found and matches_any(
+        text,
+        (r"temperature.{0,25}(0|zero).{0,35}khong.{0,20}(dam bao|luon dung)",),
+    ):
+        found.remove("M3")
+    return found
 
 
 def looks_insufficient(value: str) -> bool:
@@ -233,6 +249,16 @@ def looks_insufficient(value: str) -> bool:
 
 def looks_out_of_scope(value: str) -> bool:
     text = normalize_text(value)
+    explicit_outside_patterns = (
+        r"\bthoi tiet\b",
+        r"\bdu bao mua\b",
+        r"\bviet cv\b",
+        r"\bnau an\b",
+        r"\bbong da\b",
+        r"\bgia co phieu\b",
+    )
+    if matches_any(text, explicit_outside_patterns):
+        return True
     # "AI" written in full caps is the acronym (the lesson's own subject); the
     # lowercase Vietnamese pronoun "ai" ("who") is checked case-sensitively on
     # the raw text so it isn't confused with the domain keyword after
@@ -932,7 +958,13 @@ class TeachBackAgent:
         if action == "SHOW_RECOVERY":
             return "Sau khi đọc đoạn gợi ý, bạn thử dạy lại ý này bằng lời của mình nhé?"
         if misconception and misconception in self.knowledge.misconceptions:
-            return self.knowledge.misconceptions[misconception]["socratic_question"]
+            row = self.knowledge.misconceptions[misconception]
+            gap = self.knowledge.misconception_gap(misconception)
+            why_wrong = self.knowledge.points[gap]["ground_truth"]
+            return (
+                f"Chỗ chưa đúng là “{row['claim']}”. {why_wrong} "
+                f"{row['socratic_question']}"
+            )
         questions = {
             "K1": "LLM tạo ra từng phần của câu trả lời bằng cơ chế nào?",
             "K2": "Vì sao một câu nghe rất hợp lý vẫn có thể sai sự thật?",

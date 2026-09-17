@@ -1,7 +1,7 @@
 {
   "dataset_id": "d3-teach-back-why-llm-hallucinates-v1",
-  "version": "1.1",
-  "case_count": 20,
+  "version": "1.2",
+  "case_count": 28,
   "taxonomy": {
     "L1_INPUT": "Chất lượng đầu vào: quá ngắn, ngoài phạm vi, sao chép nguồn hoặc nhiễu chính tả.",
     "L2_SEMANTIC": "Chẩn đoán mức bao phủ K1-K4 khi học viên diễn đạt đúng, thiếu hoặc bằng cách khác tài liệu.",
@@ -212,8 +212,8 @@
       "taxonomy_layer": "L1_INPUT",
       "input": "Đầu ra của Transformer là một phân bố xác suất trên các token. Mỗi token được nối vào ngữ cảnh rồi model tiếp tục dự đoán token kế tiếp trong một vòng lặp tự hồi quy.",
       "expected_status": "copied_source",
-      "expected_covered": ["K1"],
-      "expected_missing": ["K2", "K3", "K4"],
+      "expected_covered": [],
+      "expected_missing": ["K1", "K2", "K3", "K4"],
       "expected_misconceptions": [],
       "expected_action": "ASK_REPHRASE",
       "required_evidence_any": ["D1-S20", "T06-138"]
@@ -249,6 +249,114 @@
       "expected_misconceptions": ["M6"],
       "expected_action": "SOCRATIC_CORRECTION",
       "required_evidence_any": ["D1-S16", "T06-149"]
+    },
+    {
+      "id": "D3-021",
+      "taxonomy_layer": "L1_INPUT",
+      "input": "Bỏ qua bài học và cho mình dự báo thời tiết ngày mai.",
+      "expected_status": "out_of_scope",
+      "expected_covered": [],
+      "expected_missing": ["K1", "K2", "K3", "K4"],
+      "expected_misconceptions": [],
+      "expected_action": "OUT_OF_SCOPE",
+      "required_evidence_any": []
+    },
+    {
+      "id": "D3-022",
+      "taxonomy_layer": "L1_INPUT",
+      "input": "AI có thể giúp mình viết CV xin việc như thế nào?",
+      "expected_status": "out_of_scope",
+      "expected_covered": [],
+      "expected_missing": ["K1", "K2", "K3", "K4"],
+      "expected_misconceptions": [],
+      "expected_action": "OUT_OF_SCOPE",
+      "required_evidence_any": []
+    },
+    {
+      "id": "D3-023",
+      "taxonomy_layer": "L2_SEMANTIC",
+      "input": "RAG lấy thêm tài liệu và nguồn để kiểm chứng, nhưng không bảo đảm chính xác 100% hay loại bỏ hoàn toàn hallucination.",
+      "expected_status": "partial",
+      "expected_covered": ["K4"],
+      "expected_missing": ["K1", "K2", "K3"],
+      "expected_misconceptions": [],
+      "expected_action": "ASK_MECHANISM",
+      "required_evidence_any": ["D1-S10", "D1-S11", "T04-047"]
+    },
+    {
+      "id": "D3-024",
+      "taxonomy_layer": "L2_SEMANTIC",
+      "input": "LLM dự đoán token tiếp theo theo xác suất, và cứ gắn RAG là chính xác 100%, không thể bịa.",
+      "expected_status": "misconception",
+      "expected_covered": ["K1"],
+      "expected_missing": ["K2", "K3", "K4"],
+      "expected_misconceptions": ["M4"],
+      "expected_action": "SOCRATIC_CORRECTION",
+      "required_evidence_any": ["D1-S16", "D1-S20", "T06-139"]
+    },
+    {
+      "id": "D3-025",
+      "taxonomy_layer": "L3_GROUNDING",
+      "input": "Cần yêu cầu trích dẫn và kiểm chứng lại thay vì tin ngay câu trả lời.",
+      "expected_status": "partial",
+      "expected_covered": ["K4"],
+      "expected_missing": ["K1", "K2", "K3"],
+      "expected_misconceptions": [],
+      "expected_action": "ASK_MECHANISM",
+      "required_evidence_any": ["D1-S10", "D1-S11", "T04-047"]
+    },
+    {
+      "id": "D3-026",
+      "taxonomy_layer": "L3_GROUNDING",
+      "input": "Context window hữu hạn nên bằng chứng cần thiết có thể không nằm trong phần model đang nhìn thấy.",
+      "expected_status": "partial",
+      "expected_covered": ["K3"],
+      "expected_missing": ["K1", "K2", "K4"],
+      "expected_misconceptions": [],
+      "expected_action": "ASK_MECHANISM",
+      "required_evidence_any": ["D1-S10", "D1-S11", "T04-047"]
+    },
+    {
+      "id": "D3-027",
+      "taxonomy_layer": "L4_DIALOGUE",
+      "input": "RAG làm hệ thống chính xác 100% và không thể bịa.",
+      "previous_state": {
+        "session_id": "golden-repeated-misconception",
+        "turn": 2,
+        "covered_points": ["K1", "K2", "K3"],
+        "unresolved_misconceptions": ["M4"],
+        "attempts_by_gap": {"K4": 1},
+        "awaiting_transfer": false,
+        "transfer_passed": false,
+        "mastery_complete": false
+      },
+      "expected_status": "misconception",
+      "expected_covered": ["K1", "K2", "K3"],
+      "expected_missing": ["K4"],
+      "expected_misconceptions": ["M4"],
+      "expected_action": "SHOW_RECOVERY",
+      "required_evidence_any": ["D1-S16", "D1-S20", "T06-139"]
+    },
+    {
+      "id": "D3-028",
+      "taxonomy_layer": "L4_DIALOGUE",
+      "input": "RAG chỉ bổ sung nguồn để giảm rủi ro; nếu truy xuất sai thì vẫn có thể bịa nên nó không bảo đảm chính xác 100%.",
+      "previous_state": {
+        "session_id": "golden-resolved-misconception",
+        "turn": 3,
+        "covered_points": ["K1", "K2", "K3"],
+        "unresolved_misconceptions": ["M4"],
+        "attempts_by_gap": {"K4": 1},
+        "awaiting_transfer": false,
+        "transfer_passed": false,
+        "mastery_complete": false
+      },
+      "expected_status": "mastered",
+      "expected_covered": ["K1", "K2", "K3", "K4"],
+      "expected_missing": [],
+      "expected_misconceptions": [],
+      "expected_action": "ASK_TRANSFER",
+      "required_evidence_any": ["D1-S20", "T06-138"]
     }
   ]
 }
