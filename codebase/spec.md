@@ -13,7 +13,45 @@
 
 **Job executor + workflow** *(worksheet JTBD thật, sơ đồ đính kèm)*
 
-![Workflow học viên trước khi có Teach-back Studio](workflow.jpg)
+```mermaid
+flowchart TD
+    subgraph PASSIVE["Chu trình học thụ động — chưa có ứng dụng"]
+        A["Sử dụng trang web"] --> B["Tìm bài giảng"]
+        B --> C["Đọc lại slide / transcript"]
+        C --> D{"Có thể / cần thiết?"}
+        D -->|Có: đánh dấu| E["Highlight nội dung"]
+        D -->|Có: ghi lại| F["Note / ghi chép"]
+        D -->|Không| G["Tiếp tục đọc"]
+        E --> G
+        F --> G
+        G --> H["Kết thúc nội dung bài giảng"]
+        H --> I["Chuyển sang bài tiếp theo"]
+        I --> J["Tiếp tục chu trình học thụ động"]
+        J -.->|Bài tiếp theo| A
+    end
+
+    subgraph LATE["Phát hiện sai sót — trễ"]
+        K["Làm bài kiểm tra / bài tập về nhà"] --> K1["Điểm thấp / sai kiến thức"]
+        L["Bị người khác / thầy cô hỏi ngược"] --> L1["Không trả lời được"]
+        K1 --> M{"Hiểu sai / thiếu?"}
+        L1 --> M
+        M --> N["Hệ quả: phải quay lại tìm lỗi"]
+        N --> O["Quay lại bài giảng cũ"]
+    end
+
+    J -.->|Sau một thời gian| K
+    J -.->|Khi có tương tác bên ngoài| L
+    O --> C
+
+    classDef passive fill:#fff7ff,stroke:#d97ad9,color:#222;
+    classDef delayed fill:#ffe1e1,stroke:#ff6b6b,color:#222;
+    classDef decision fill:#ffffff,stroke:#333,color:#222;
+    classDef consequence fill:#f3f3f3,stroke:#555,color:#222;
+    class A,B,C,E,F,G,H,I,J passive;
+    class K,L delayed;
+    class D,M decision;
+    class K1,L1,N,O consequence;
+```
 
 Workflow hiện tại của học viên VLearn gồm 2 phần nối tiếp nhau:
 
