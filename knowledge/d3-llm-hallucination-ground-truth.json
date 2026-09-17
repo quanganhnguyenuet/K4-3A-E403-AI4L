@@ -1,0 +1,334 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "d3-teach-back-why-llm-hallucinates-v1",
+  "track": "D3",
+  "language": "vi",
+  "concept": {
+    "id": "why-llm-hallucinates",
+    "title": "Vì sao LLM có thể bịa (hallucinate)?",
+    "student_task": "Hãy dạy lại cho agent vì sao một LLM có thể tạo ra câu trả lời nghe hợp lý nhưng sai, nêu một ví dụ và cách giảm rủi ro.",
+    "in_scope": [
+      "cơ chế dự đoán token tiếp theo theo phân bố xác suất",
+      "sự khác nhau giữa câu nghe hợp lý và sự thật đã được kiểm chứng",
+      "ảnh hưởng của dữ liệu huấn luyện, knowledge cutoff và context hữu hạn",
+      "RAG, tools, context phù hợp và kiểm chứng như các cách giảm rủi ro",
+      "temperature thấp giúp ổn định hơn nhưng không bổ sung tri thức và không bảo đảm đúng"
+    ],
+    "out_of_scope": [
+      "chứng minh toán học chi tiết của Transformer",
+      "so sánh benchmark hoặc giá của từng model",
+      "tuyên bố một kỹ thuật loại bỏ hoàn toàn hallucination"
+    ]
+  },
+  "source_policy": {
+    "raw_files_are_private": true,
+    "public_dataset_contains": "Chỉ chứa diễn giải ngắn và mã định vị; không sao chép transcript hoặc slide đầy đủ.",
+    "citation_format": "D1-Sxx cho slide và Txx-NNN cho transcript."
+  },
+  "sources": [
+    {
+      "id": "D1-S10",
+      "type": "slide",
+      "private_file": "data/slides/d1-slide-hackathon.pdf",
+      "page": 10,
+      "supports": ["K1"],
+      "paraphrase": "LLM học cách đoán mảnh chữ tiếp theo trong ngữ cảnh; chatbot chỉ là một lớp sản phẩm bao quanh model nền."
+    },
+    {
+      "id": "D1-S11",
+      "type": "slide",
+      "private_file": "data/slides/d1-slide-hackathon.pdf",
+      "page": 11,
+      "supports": ["K1"],
+      "paraphrase": "Đầu ra của Transformer là một phân bố xác suất trên các token ứng viên."
+    },
+    {
+      "id": "D1-S12",
+      "type": "slide",
+      "private_file": "data/slides/d1-slide-hackathon.pdf",
+      "page": 12,
+      "supports": ["K1"],
+      "paraphrase": "Mỗi token được nối vào ngữ cảnh rồi model tiếp tục dự đoán token kế tiếp trong một vòng lặp tự hồi quy."
+    },
+    {
+      "id": "D1-S16",
+      "type": "slide",
+      "private_file": "data/slides/d1-slide-hackathon.pdf",
+      "page": 16,
+      "supports": ["K3", "K4"],
+      "paraphrase": "Context và attention có giới hạn; với tài liệu dài nên lấy đúng đoạn liên quan vào context thay vì bắt model nhớ toàn bộ."
+    },
+    {
+      "id": "D1-S20",
+      "type": "slide",
+      "private_file": "data/slides/d1-slide-hackathon.pdf",
+      "page": 20,
+      "supports": ["K2", "K3", "K4"],
+      "paraphrase": "Model có knowledge cutoff, tối ưu cho câu nghe hợp lý chứ không tự tra sự thật, và có context hữu hạn; RAG, tools và kiểm chứng giúp giảm rủi ro."
+    },
+    {
+      "id": "D1-S29",
+      "type": "slide",
+      "private_file": "data/slides/d1-slide-hackathon.pdf",
+      "page": 29,
+      "supports": ["K4"],
+      "paraphrase": "Temperature và top_p chỉ thay đổi cách chọn token; chúng không làm model thông minh hơn hoặc thêm tri thức mới."
+    },
+    {
+      "id": "T04-047",
+      "type": "transcript",
+      "private_file": "data/transcript/transcript-04-clean.md",
+      "segment": "T04-047",
+      "supports": ["K1"],
+      "paraphrase": "LLM dự đoán token tiếp theo, nối token vừa sinh vào chuỗi rồi lặp lại quá trình."
+    },
+    {
+      "id": "T06-136",
+      "type": "transcript",
+      "private_file": "data/transcript/transcript-06-clean.md",
+      "segment": "T06-136",
+      "supports": ["K1"],
+      "paraphrase": "LLM không hiểu ngôn ngữ giống con người mà dự báo token theo xác suất; temperature tác động cách chọn token."
+    },
+    {
+      "id": "T06-138",
+      "type": "transcript",
+      "private_file": "data/transcript/transcript-06-clean.md",
+      "segment": "T06-138",
+      "supports": ["K2", "K3"],
+      "paraphrase": "LLM không thể được giả định là đúng tuyệt đối; dữ liệu Internet dùng để huấn luyện có thể chứa thiên lệch."
+    },
+    {
+      "id": "T06-139",
+      "type": "transcript",
+      "private_file": "data/transcript/transcript-06-clean.md",
+      "segment": "T06-139",
+      "supports": ["K3", "K4"],
+      "paraphrase": "Thiên lệch có thể đi qua các giai đoạn huấn luyện; RAG bổ sung dữ liệu và nguồn trích dẫn để giảm rủi ro."
+    },
+    {
+      "id": "T06-148",
+      "type": "transcript",
+      "private_file": "data/transcript/transcript-06-clean.md",
+      "segment": "T06-148",
+      "supports": ["K3", "K4"],
+      "paraphrase": "Knowledge cutoff khiến model không có thông tin xảy ra sau mốc dữ liệu; tool tìm kiếm có thể bổ sung dữ liệu mới."
+    },
+    {
+      "id": "T06-149",
+      "type": "transcript",
+      "private_file": "data/transcript/transcript-06-clean.md",
+      "segment": "T06-149",
+      "supports": ["K3"],
+      "paraphrase": "Context window giới hạn lượng thông tin model có thể nhìn trong một lần xử lý."
+    }
+  ],
+  "knowledge_points": [
+    {
+      "id": "K1",
+      "label": "Cơ chế sinh xác suất",
+      "required": true,
+      "ground_truth": "LLM tạo câu trả lời bằng cách dự đoán token tiếp theo theo một phân bố xác suất và lặp lại sau mỗi token; nó không mặc định thực hiện một phép tra cứu sự thật.",
+      "accepted_signals": [
+        "đoán hoặc dự đoán token tiếp theo",
+        "chọn token theo xác suất",
+        "nối token rồi dự đoán tiếp",
+        "sinh văn bản theo pattern đã học"
+      ],
+      "source_ids": ["D1-S10", "D1-S11", "D1-S12", "T04-047", "T06-136"]
+    },
+    {
+      "id": "K2",
+      "label": "Hợp lý không đồng nghĩa đúng",
+      "required": true,
+      "ground_truth": "Mục tiêu sinh một chuỗi có vẻ phù hợp với ngữ cảnh không tự động kiểm chứng rằng nội dung là sự thật, nên model có thể trả lời trôi chảy và tự tin nhưng sai.",
+      "accepted_signals": [
+        "nghe hợp lý nhưng sai",
+        "không tự kiểm chứng sự thật",
+        "tự tin không có nghĩa là đúng",
+        "model tối ưu cho phần tiếp nối phù hợp"
+      ],
+      "source_ids": ["D1-S20", "T06-138"]
+    },
+    {
+      "id": "K3",
+      "label": "Nguồn gây thiếu hoặc sai căn cứ",
+      "required": true,
+      "ground_truth": "Rủi ro tăng khi dữ liệu huấn luyện có thiên lệch hoặc thiếu, câu hỏi nằm sau knowledge cutoff, hoặc bằng chứng cần thiết không nằm trong context mà model đang nhìn thấy.",
+      "accepted_signals": [
+        "dữ liệu huấn luyện thiếu hoặc thiên lệch",
+        "knowledge cutoff",
+        "context window hữu hạn",
+        "không có nguồn liên quan trong context"
+      ],
+      "minimum_distinct_causes_for_mastery": 1,
+      "source_ids": ["D1-S16", "D1-S20", "T06-138", "T06-139", "T06-148", "T06-149"]
+    },
+    {
+      "id": "K4",
+      "label": "Giảm rủi ro, không bảo đảm tuyệt đối",
+      "required": true,
+      "ground_truth": "RAG, tools, context phù hợp, trích dẫn và kiểm chứng có thể giảm hallucination nhưng không tạo bảo đảm đúng tuyệt đối; temperature thấp chủ yếu làm đầu ra ổn định hơn.",
+      "accepted_signals": [
+        "dùng RAG hoặc tool để lấy nguồn",
+        "yêu cầu trích dẫn và kiểm chứng",
+        "không có căn cứ thì nói không biết",
+        "temperature thấp không thêm tri thức",
+        "RAG không loại bỏ hoàn toàn hallucination"
+      ],
+      "source_ids": ["D1-S16", "D1-S20", "D1-S29", "T06-139", "T06-148"]
+    }
+  ],
+  "misconceptions": [
+    {
+      "id": "M1",
+      "claim": "LLM luôn tra cứu một cơ sở dữ liệu sự thật trước khi trả lời.",
+      "conflicts_with": ["K1", "K2"],
+      "socratic_question": "Nếu model luôn tra một cơ sở dữ liệu sự thật, vì sao slide lại mô tả đầu ra của nó là một phân bố xác suất trên các token?"
+    },
+    {
+      "id": "M2",
+      "claim": "LLM cố ý nói dối hoặc biết chắc đáp án sai nhưng vẫn trả lời.",
+      "conflicts_with": ["K1", "K2"],
+      "socratic_question": "Ta có cần giả định model có ý định nói dối, hay cơ chế chọn phần tiếp nối nghe hợp lý đã đủ giải thích hiện tượng này?"
+    },
+    {
+      "id": "M3",
+      "claim": "Đặt temperature bằng 0 sẽ làm câu trả lời luôn đúng.",
+      "conflicts_with": ["K4"],
+      "socratic_question": "Temperature thấp làm cách chọn token ổn định hơn, nhưng nó có bổ sung sự kiện mà model chưa từng biết không?"
+    },
+    {
+      "id": "M4",
+      "claim": "Có RAG thì hệ thống hết hallucination và đạt độ chính xác 100%.",
+      "conflicts_with": ["K4"],
+      "socratic_question": "Nếu hệ thống truy xuất nhầm đoạn hoặc tài liệu nguồn vốn đã sai, RAG còn bảo đảm tuyệt đối được không?"
+    },
+    {
+      "id": "M5",
+      "claim": "Hallucination chỉ xảy ra khi hỏi thông tin mới sau knowledge cutoff.",
+      "conflicts_with": ["K1", "K2", "K3"],
+      "socratic_question": "Ngoài dữ liệu mới, chuyện gì xảy ra khi dữ liệu huấn luyện có thiên lệch hoặc bằng chứng không nằm trong context?"
+    },
+    {
+      "id": "M6",
+      "claim": "Context càng dài thì model luôn càng chính xác.",
+      "conflicts_with": ["K3", "K4"],
+      "socratic_question": "Slide nói attention có điểm mù; vậy nhét cả tài liệu dài vào context có thể khiến thông tin liên quan bị bỏ sót không?"
+    }
+  ],
+  "mastery_policy": {
+    "purpose": "Luyện tập, không phải điểm thi.",
+    "mastered_when": [
+      "K1 được giải thích đúng",
+      "K2 được giải thích đúng",
+      "K3 có ít nhất một nguyên nhân cụ thể",
+      "không còn misconception nghiêm trọng",
+      "học viên diễn đạt bằng lời của mình hoặc nêu được ví dụ riêng"
+    ],
+    "not_mastered_when": [
+      "chỉ nói AI bịa vì AI không thông minh",
+      "lặp nguyên văn nguồn mà không diễn giải",
+      "khẳng định temperature hoặc RAG bảo đảm đúng tuyệt đối",
+      "trả lời ngoài chủ đề hoặc quá ngắn để đánh giá"
+    ],
+    "progress_mapping": {
+      "0": "Không đủ bằng chứng để đánh giá",
+      "35": "Nắm được một phần cơ chế hoặc một nguyên nhân",
+      "70": "Nắm cơ chế và khoảng trống giữa hợp lý với đúng, còn thiếu nguyên nhân hoặc ví dụ",
+      "100": "Đủ tiêu chí mastered_when"
+    }
+  },
+  "ui_checklist": [
+    {
+      "id": "UI1",
+      "label": "LLM dự đoán token tiếp theo theo xác suất",
+      "satisfied_by": ["K1"]
+    },
+    {
+      "id": "UI2",
+      "label": "Câu nghe hợp lý không đồng nghĩa đã được kiểm chứng",
+      "satisfied_by": ["K2"]
+    },
+    {
+      "id": "UI3",
+      "label": "Nêu được một nguồn rủi ro và một cách giảm rủi ro",
+      "satisfied_by": ["K3", "K4"]
+    }
+  ],
+  "agent_policy": {
+    "persona": "Một học trò AI ngây thơ có kiểm soát, công khai mình là AI, cần người học dạy lại.",
+    "must": [
+      "Đối chiếu với knowledge_points và source_ids trước khi cập nhật mức hiểu.",
+      "Hỏi tối đa một câu mỗi lượt và nhắm vào khoảng trống quan trọng nhất.",
+      "Chấp nhận diễn đạt khác tài liệu nếu ý nghĩa tương đương.",
+      "Nếu phát hiện misconception, không được kết thúc phiên trước khi nó được sửa.",
+      "Nếu không có căn cứ trong nguồn, nói chưa đủ căn cứ thay vì tự bổ sung.",
+      "Sau hai lần vẫn sai, chuyển sang recovery với đúng đoạn nguồn liên quan."
+    ],
+    "must_not": [
+      "Đưa toàn bộ đáp án ngay ở câu hỏi đầu tiên.",
+      "Đánh giá chỉ bằng từ khóa hoặc độ dài câu trả lời.",
+      "Tăng phần trăm hiểu nếu không chỉ ra được knowledge point đã được chứng minh.",
+      "Trích dẫn source_id không tồn tại.",
+      "Tạo cảm giác đây là bài thi hoặc điểm số chính thức."
+    ],
+    "allowed_actions": [
+      "ASK_MECHANISM",
+      "ASK_CAUSE",
+      "ASK_MITIGATION",
+      "ASK_EXAMPLE",
+      "SOCRATIC_CORRECTION",
+      "ASK_REPHRASE",
+      "SHOW_RECOVERY",
+      "ASK_TRANSFER",
+      "COMPLETE_SESSION",
+      "OUT_OF_SCOPE"
+    ]
+  },
+  "recovery_cards": [
+    {
+      "id": "R1",
+      "for": ["K1"],
+      "text": "Model chấm xác suất cho các token có thể xuất hiện tiếp theo, chọn một token, nối nó vào ngữ cảnh rồi lặp lại.",
+      "source_ids": ["D1-S11", "D1-S12", "T04-047"]
+    },
+    {
+      "id": "R2",
+      "for": ["K2"],
+      "text": "Một phần tiếp nối có thể rất hợp với mẫu ngôn ngữ đã học nhưng vẫn chưa được kiểm chứng là đúng sự thật.",
+      "source_ids": ["D1-S20", "T06-138"]
+    },
+    {
+      "id": "R3",
+      "for": ["K3"],
+      "text": "Model có thể thiếu căn cứ vì dữ liệu thiên lệch, knowledge cutoff hoặc thông tin cần thiết không nằm trong context đang dùng.",
+      "source_ids": ["D1-S20", "T06-138", "T06-148", "T06-149"]
+    },
+    {
+      "id": "R4",
+      "for": ["K4"],
+      "text": "RAG và tools đưa thêm nguồn liên quan vào context; chúng giảm rủi ro nhưng vẫn cần trích dẫn và kiểm chứng.",
+      "source_ids": ["D1-S16", "D1-S20", "T06-139"]
+    }
+  ],
+  "response_contract": {
+    "status_enum": ["mastered", "partial", "misconception", "needs_recovery", "copied_source", "out_of_scope"],
+    "required_fields": [
+      "status",
+      "covered_points",
+      "missing_points",
+      "misconceptions",
+      "next_action",
+      "agent_response",
+      "evidence_source_ids"
+    ],
+    "rules": [
+      "covered_points chỉ chứa K1-K4",
+      "misconceptions chỉ chứa M1-M6",
+      "evidence_source_ids phải tồn tại trong sources",
+      "agent_response chỉ có một câu hỏi nếu status chưa mastered",
+      "không suy ra K1-K4 chỉ vì có từ khóa giống tài liệu"
+    ]
+  }
+}

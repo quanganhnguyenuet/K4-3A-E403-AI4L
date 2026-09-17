@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Teach-back Studio</title>
+  <style>
+    :root {
+      --ink: #17211b;
+      --muted: #66736a;
+      --faint: #8c978f;
+      --paper: #f4f1e9;
+      --panel: #fffdf8;
+      --line: #dedbd1;
+      --green: #174b36;
+      --green-2: #2f7357;
+      --mint: #dcecdf;
+      --amber: #d99330;
+      --coral: #d7624d;
+      --shadow: 0 18px 55px rgba(39, 48, 42, .10);
+      --radius: 18px;
+      --font-ui: "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
+      --font-display: "Segoe UI Variable Display", "Segoe UI", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); }
+    body {
+      font-family: var(--font-ui);
+      background-image:
+        radial-gradient(circle at 10% 10%, rgba(47, 115, 87, .09), transparent 30%),
+        radial-gradient(circle at 90% 80%, rgba(217, 147, 48, .08), transparent 34%);
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .app {
+      display: grid; grid-template-columns: 292px minmax(0, 1fr) 290px;
+      width: 100%; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden;
+    }
+    .sidebar, .inspector { background: rgba(255, 253, 248, .78); backdrop-filter: blur(18px); }
+    .sidebar { min-height: 0; border-right: 1px solid var(--line); padding: 22px 16px; display: flex; flex-direction: column; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center;
+      color: white; font-weight: 800; background: var(--green);
+      box-shadow: 0 8px 24px rgba(23, 75, 54, .22);
+    }
+    .brand h1 { font-family: var(--font-display); font-size: 19px; font-weight: 750; margin: 0; letter-spacing: -.02em; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
+    .new-btn, .primary-btn {
+      border: 0; border-radius: 12px; color: #fff; background: var(--green);
+      padding: 11px 14px; font-weight: 700; box-shadow: 0 8px 22px rgba(23, 75, 54, .17);
+    }
+    .new-btn { width: 100%; }
+    .section-title {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 0 5px 8px; color: var(--faint); font-size: 10px;
+      font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
+    }
+    .section-title button { border: 0; background: transparent; color: var(--faint); padding: 2px; font-size: 9px; text-transform: none; letter-spacing: 0; }
+    .section-title button:hover { color: var(--coral); }
+    .lesson-list, .session-list { display: grid; gap: 7px; }
+    .lesson-card, .session-card {
+      border: 1px solid transparent; background: transparent; border-radius: 12px;
+      padding: 10px 11px; text-align: left; width: 100%; color: var(--ink);
+      transition: .18s ease;
+    }
+    .lesson-card:hover, .session-card:hover { background: #fff; border-color: var(--line); transform: translateY(-1px); }
+    .lesson-card.active, .session-card.active { background: var(--mint); border-color: #bdd7c5; }
+    .lesson-track { display: block; font-size: 9px; text-transform: uppercase; color: var(--green-2); font-weight: 800; letter-spacing: .1em; }
+    .lesson-title { display: block; font-size: 13px; font-weight: 720; margin-top: 3px; line-height: 1.3; }
+    .sessions-wrap { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .session-list { overflow-y: auto; padding-right: 2px; }
+    .session-card .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .session-card strong { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card small { color: var(--muted); font-size: 10px; }
+    .session-card p { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .empty-note { color: var(--faint); font-size: 12px; padding: 9px; }
+
+    .main { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      min-height: 78px; padding: 15px 26px; border-bottom: 1px solid var(--line);
+      background: rgba(244, 241, 233, .78); backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    }
+    .topbar > div:first-child { min-width: 0; }
+    .eyebrow { color: var(--green-2); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; font-size: 10px; }
+    .topbar h2 { font-family: var(--font-display); font-size: 25px; font-weight: 700; line-height: 1.12; margin: 3px 0 0; letter-spacing: -.025em; }
+    .top-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
+    .runtime-badge {
+      display: flex; align-items: center; gap: 7px; border: 1px solid var(--line);
+      background: var(--panel); padding: 8px 11px; border-radius: 999px; font-size: 11px; color: var(--muted);
+    }
+    .runtime-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+    .runtime-badge.online .runtime-dot { background: #34a36c; box-shadow: 0 0 0 4px rgba(52, 163, 108, .12); }
+    .ghost-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 11px; padding: 8px 11px; color: var(--ink); white-space: nowrap; }
+    .progress-area { padding: 15px 26px 0; }
+    .progress-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 7px; }
+    .progress-head strong { color: var(--ink); font-size: 13px; }
+    .progress-track { height: 7px; background: #deddd5; border-radius: 999px; overflow: hidden; }
+    .progress-fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--green), #50a477); transition: width .45s ease; border-radius: inherit; }
+    .point-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+    .point {
+      border: 1px solid var(--line); background: rgba(255,255,255,.55);
+      padding: 8px 9px; border-radius: 10px; min-width: 0;
+    }
+    .point.covered { background: var(--mint); border-color: #b8d6c1; }
+    .point b { display: block; font-size: 10px; color: var(--green-2); }
+    .point span { display: block; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+
+    .chat { flex: 1; min-height: 0; overflow-y: auto; padding: 24px max(26px, calc((100% - 800px) / 2)); }
+    .progress-area.empty { display: none; }
+    .welcome { max-width: 760px; margin: 7vh auto 0; text-align: center; }
+    .welcome-kicker { color: var(--green-2); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .welcome h3 {
+      max-width: 650px; margin: 9px auto 10px;
+      font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1.14;
+      letter-spacing: -.035em; text-wrap: balance;
+    }
+    .welcome > p { color: var(--muted); line-height: 1.6; font-size: 13px; max-width: 610px; margin: 0 auto; }
+    .welcome-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 25px; text-align: left; }
+    .welcome-card { border: 1px solid var(--line); background: rgba(255,253,248,.85); border-radius: 14px; padding: 13px; color: var(--ink); transition: .18s ease; }
+    .welcome-card:hover { border-color: #a9cbb5; background: var(--mint); transform: translateY(-2px); }
+    .welcome-card small { color: var(--green-2); display: block; font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .welcome-card strong { display: block; margin-top: 4px; font-size: 12.5px; }
+    .message { display: flex; gap: 10px; margin: 0 0 19px; align-items: flex-start; }
+    .message.user { justify-content: flex-end; }
+    .avatar {
+      flex: 0 0 30px; height: 30px; display: grid; place-items: center; border-radius: 10px;
+      background: var(--green); color: white; font-size: 11px; font-weight: 800;
+    }
+    .bubble { max-width: 78%; padding: 12px 14px; border-radius: 5px 16px 16px 16px; background: var(--panel); border: 1px solid var(--line); line-height: 1.55; font-size: 13.5px; box-shadow: 0 5px 18px rgba(42, 48, 44, .04); white-space: pre-wrap; }
+    .message.user .bubble { color: white; background: var(--green); border-color: var(--green); border-radius: 16px 5px 16px 16px; }
+    .message-meta { margin-top: 6px; color: var(--faint); font-size: 10px; }
+    .typing { display: inline-flex; gap: 4px; align-items: center; height: 18px; }
+    .typing i { width: 5px; height: 5px; background: var(--faint); border-radius: 50%; animation: pulse 1s infinite alternate; }
+    .typing i:nth-child(2) { animation-delay: .18s; }
+    .typing i:nth-child(3) { animation-delay: .36s; }
+    @keyframes pulse { to { transform: translateY(-4px); opacity: .35; } }
+    .status-banner {
+      display: none; margin: 0 max(26px, calc((100% - 800px) / 2)) 10px;
+      border-radius: 12px; padding: 10px 13px; font-size: 12px; border: 1px solid var(--line);
+    }
+    .status-banner.show { display: block; }
+    .status-banner.out_of_scope { background: #fff0e9; border-color: #efc6b8; color: #8c3a2c; }
+    .status-banner.mastered { background: var(--mint); border-color: #b8d6c1; color: var(--green); }
+    .status-banner.needs_recovery { background: #fff4d9; border-color: #ead19a; color: #7e5a16; }
+    .composer-wrap { padding: 0 max(26px, calc((100% - 800px) / 2)) 22px; }
+    .starters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+    .chip { border: 1px solid var(--line); background: rgba(255,253,248,.85); border-radius: 999px; padding: 7px 10px; white-space: nowrap; font-size: 10.5px; color: var(--muted); }
+    .chip:hover { border-color: var(--green-2); color: var(--green); }
+    .composer {
+      display: flex; align-items: flex-end; gap: 9px; background: var(--panel);
+      border: 1px solid #cbc9bf; border-radius: 16px; padding: 9px;
+      box-shadow: var(--shadow);
+    }
+    textarea { flex: 1; border: 0; outline: 0; resize: none; min-height: 24px; max-height: 130px; background: transparent; padding: 7px; line-height: 1.45; color: var(--ink); }
+    .send { border: 0; background: var(--green); color: white; width: 39px; height: 39px; border-radius: 12px; font-weight: 900; }
+    .send:disabled { opacity: .45; cursor: wait; }
+    .composer-note { margin: 7px 4px 0; color: var(--faint); font-size: 10px; display: flex; justify-content: space-between; }
+
+    .inspector { min-height: 0; border-left: 1px solid var(--line); padding: 22px 18px; overflow-y: auto; }
+    .inspector h3 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 18px; }
+    .task-card { margin-top: 13px; padding: 13px; border: 1px solid var(--line); background: var(--panel); border-radius: 13px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .inspector-label { margin: 23px 0 9px; color: var(--faint); text-transform: uppercase; letter-spacing: .11em; font-size: 9px; font-weight: 800; }
+    .source-list { display: grid; gap: 8px; }
+    .source { border-left: 3px solid var(--green-2); background: var(--panel); padding: 10px 11px; border-radius: 4px 11px 11px 4px; }
+    .source b { font-size: 10px; color: var(--green); }
+    .source small { color: var(--faint); font-size: 9px; margin-left: 5px; }
+    .source p { font-size: 11px; line-height: 1.45; margin: 6px 0 0; color: var(--muted); }
+    .source blockquote { margin: 8px 0 0; padding: 7px 9px; border-left: 2px solid #b8d6c1; background: #f3f7f3; color: var(--ink); font-size: 10.5px; line-height: 1.5; }
+    .privacy { margin-top: 24px; padding: 11px; border-radius: 12px; background: #edf3ee; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(20, 28, 23, .38); display: none; place-items: center; padding: 20px; z-index: 20; }
+    .modal-backdrop.show { display: grid; }
+    .modal { width: min(470px, 100%); background: var(--panel); border-radius: 20px; box-shadow: 0 25px 80px rgba(0,0,0,.22); padding: 22px; }
+    .modal-head { display: flex; justify-content: space-between; gap: 14px; }
+    .modal h3 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 22px; }
+    .modal p { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .field { margin-top: 14px; }
+    .field label { display: block; font-size: 11px; font-weight: 750; margin-bottom: 6px; }
+    .field input, .field select { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: white; padding: 10px 11px; outline: 0; }
+    .field input:focus, .field select:focus { border-color: var(--green-2); box-shadow: 0 0 0 3px rgba(47,115,87,.10); }
+    .secret-row { display: flex; gap: 7px; }
+    .secret-row input { flex: 1; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: white; border-radius: 999px; padding: 10px 15px; font-size: 11px; opacity: 0; pointer-events: none; transition: .2s; z-index: 30; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 1060px) {
+      .app { grid-template-columns: 250px minmax(0, 1fr); }
+      .inspector { display: none; }
+    }
+    @media (max-width: 900px) {
+      .topbar { padding-left: 20px; padding-right: 20px; gap: 12px; }
+      .topbar h2 { font-size: 22px; }
+      .runtime-badge { padding-left: 9px; padding-right: 9px; }
+    }
+    @media (max-width: 720px) {
+      .app { display: block; }
+      .sidebar { display: none; }
+      .main { height: 100%; }
+      .topbar { padding: 12px 15px; min-height: 68px; }
+      .topbar h2 { font-size: 19px; }
+      .runtime-badge { display: none; }
+      .progress-area { padding: 10px 15px 0; }
+      .point-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chat { padding: 18px 15px; }
+      .welcome { margin-top: 3vh; }
+      .welcome h3 { font-size: 27px; }
+      .welcome-grid { grid-template-columns: 1fr; }
+      .bubble { max-width: 88%; }
+      .composer-wrap { padding: 0 15px 13px; }
+      .status-banner { margin-left: 15px; margin-right: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">TB</div>
+        <div><h1>Teach-back Studio</h1><p>Học bằng cách dạy lại</p></div>
+      </div>
+      <button class="new-btn" id="newSessionBtn">＋ Cuộc trò chuyện mới</button>
+      <section class="sessions-wrap">
+        <div class="section-title"><span>Lịch sử · <span id="sessionCount">0</span></span><button id="clearHistoryBtn" type="button">Xóa tất cả</button></div>
+        <div class="session-list" id="sessionList"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow" id="trackLabel">Cuộc trò chuyện mới</div>
+          <h2 id="lessonTitle">Teach-back Studio</h2>
+        </div>
+        <div class="top-actions">
+          <div class="runtime-badge" id="runtimeBadge"><span class="runtime-dot"></span><span id="runtimeText">Offline</span></div>
+          <button class="ghost-btn" id="mobileNewBtn" title="Phiên mới">＋</button>
+          <button class="ghost-btn" id="settingsBtn">Cấu hình</button>
+        </div>
+      </header>
+
+      <section class="progress-area empty" id="progressArea">
+        <div class="progress-head"><span>Tiến độ hiểu bài</span><strong id="progressText">0%</strong></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="point-row" id="pointRow"></div>
+      </section>
+
+      <div class="chat" id="chat"></div>
+      <div class="status-banner" id="statusBanner"></div>
+      <div class="composer-wrap">
+        <div class="starters" id="starters"></div>
+        <div class="composer">
+          <textarea id="messageInput" rows="1" placeholder="Bạn muốn ôn lại phần nào? Hãy nói tự nhiên như đang chat…"></textarea>
+          <button class="send" id="sendBtn" aria-label="Gửi">↑</button>
+        </div>
+        <div class="composer-note"><span>Enter để gửi · Shift+Enter xuống dòng</span><span id="sessionIdLabel"></span></div>
+      </div>
+    </main>
+
+    <aside class="inspector">
+      <h3>Ngữ cảnh học tập</h3>
+      <div class="task-card" id="taskCard">Agent sẽ tự xác định bài học từ prompt đầu tiên rồi nạp rubric và nguồn phù hợp.</div>
+      <div class="inspector-label">Nguồn liên quan gần nhất</div>
+      <div class="source-list" id="sourceList"><div class="empty-note">Nguồn sẽ xuất hiện sau khi bạn dạy lại.</div></div>
+      <div class="privacy">Knowledge trả về diễn giải và mã định vị. Khi bạn yêu cầu nguồn, hệ thống chỉ hiển thị một trích đoạn transcript ngắn đúng locator, không gửi toàn bộ transcript.</div>
+    </aside>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal-head">
+        <div><div class="eyebrow">Runtime</div><h3 id="settingsTitle">Kết nối mô hình</h3></div>
+        <button class="ghost-btn" id="closeSettingsBtn">Đóng</button>
+      </div>
+      <p>Chọn Offline để thử workflow không tốn phí, hoặc OpenAI để đánh giá ngữ nghĩa và trả lời realtime.</p>
+      <div class="field">
+        <label for="providerInput">Provider</label>
+        <select id="providerInput"><option value="offline">Offline rules</option><option value="openai">OpenAI realtime</option></select>
+      </div>
+      <div class="field" id="modelField">
+        <label for="modelInput">Model</label>
+        <input id="modelInput" value="gpt-5-mini" autocomplete="off">
+      </div>
+      <div class="field" id="keyField">
+        <label for="apiKeyInput">OpenAI API key</label>
+        <div class="secret-row">
+          <input id="apiKeyInput" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
+          <button class="ghost-btn" id="toggleKeyBtn" type="button">Hiện</button>
+        </div>
+      </div>
+      <p id="keyPolicy">Key chỉ được gửi tới backend local trong request hiện tại và không được lưu vào lịch sử.</p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cancelSettingsBtn">Hủy</button>
+        <button class="primary-btn" id="saveSettingsBtn">Lưu cấu hình</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      "use strict";
+      const state = {
+        lessons: [],
+        sessions: [],
+        activeSession: null,
+        provider: localStorage.getItem("tb_provider") || "offline",
+        model: localStorage.getItem("tb_model") || "gpt-5-mini",
+        apiKey: "",
+        runtime: null,
+        sending: false,
+      };
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        sessionList: $("sessionList"), sessionCount: $("sessionCount"),
+        lessonTitle: $("lessonTitle"), trackLabel: $("trackLabel"), progressArea: $("progressArea"),
+        taskCard: $("taskCard"), progressText: $("progressText"), progressFill: $("progressFill"),
+        pointRow: $("pointRow"), chat: $("chat"), starters: $("starters"), sourceList: $("sourceList"),
+        messageInput: $("messageInput"), sendBtn: $("sendBtn"), newSessionBtn: $("newSessionBtn"),
+        mobileNewBtn: $("mobileNewBtn"), sessionIdLabel: $("sessionIdLabel"), statusBanner: $("statusBanner"),
+        clearHistoryBtn: $("clearHistoryBtn"),
+        runtimeBadge: $("runtimeBadge"), runtimeText: $("runtimeText"), settingsBtn: $("settingsBtn"),
+        settingsModal: $("settingsModal"), closeSettingsBtn: $("closeSettingsBtn"),
+        cancelSettingsBtn: $("cancelSettingsBtn"), saveSettingsBtn: $("saveSettingsBtn"),
+        providerInput: $("providerInput"), modelInput: $("modelInput"), apiKeyInput: $("apiKeyInput"),
+        modelField: $("modelField"), keyField: $("keyField"), toggleKeyBtn: $("toggleKeyBtn"),
+        keyPolicy: $("keyPolicy"), toast: $("toast"),
+      };
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        });
+        let payload = null;
+        try { payload = await response.json(); } catch (_) {}
+        if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
+        return payload;
+      }
+
+      function toast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add("show");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => els.toast.classList.remove("show"), 2600);
+      }
+
+      function currentLesson() {
+        return state.lessons.find((lesson) => lesson.id === state.activeSession?.lesson_id);
+      }
+
+      function renderRuntime() {
+        const online = state.provider === "openai";
+        els.runtimeBadge.classList.toggle("online", online);
+        els.runtimeText.textContent = online ? `OpenAI · ${state.model}` : "Offline rules";
+      }
+
+      function renderSessions() {
+        els.sessionCount.textContent = state.sessions.length;
+        els.sessionList.innerHTML = "";
+        if (!state.sessions.length) {
+          els.sessionList.innerHTML = '<div class="empty-note">Chưa có phiên học.</div>';
+          return;
+        }
+        for (const session of state.sessions) {
+          const button = document.createElement("button");
+          button.className = "session-card" + (state.activeSession?.id === session.id ? " active" : "");
+          button.innerHTML = `<div class="row"><strong>${escapeHtml(session.title)}</strong><small>${session.progress}%</small></div><p>${escapeHtml(session.lesson_title)} · ${escapeHtml(session.preview || "Phiên mới")}</p>`;
+          button.addEventListener("click", () => loadSession(session.id));
+          els.sessionList.appendChild(button);
+        }
+      }
+
+      function renderActiveSession() {
+        const session = state.activeSession;
+        const lesson = currentLesson();
+        if (!session || !lesson) return;
+        els.progressArea.classList.remove("empty");
+        els.lessonTitle.textContent = lesson.title;
+        els.trackLabel.textContent = lesson.track;
+        els.taskCard.textContent = lesson.task;
+        els.sessionIdLabel.textContent = `session ${session.id.slice(0, 8)}`;
+        els.progressText.textContent = `${session.progress}%`;
+        els.progressFill.style.width = `${session.progress}%`;
+        els.pointRow.innerHTML = "";
+        const covered = new Set(session.covered_points || []);
+        for (const point of lesson.points) {
+          const div = document.createElement("div");
+          div.className = "point" + (covered.has(point.id) ? " covered" : "");
+          div.innerHTML = `<b>${covered.has(point.id) ? "✓" : point.id} · ${point.weight}%</b><span title="${escapeHtml(point.label)}">${escapeHtml(point.label)}</span>`;
+          els.pointRow.appendChild(div);
+        }
+        renderMessages(session.messages || []);
+        renderStarters(lesson.starter_prompts || []);
+        renderStatus(session.status);
+        renderSessions();
+      }
+
+      function showWelcome() {
+        state.activeSession = null;
+        els.trackLabel.textContent = "Cuộc trò chuyện mới";
+        els.lessonTitle.textContent = "Bạn muốn ôn lại phần nào?";
+        els.progressArea.classList.add("empty");
+        els.taskCard.textContent = "Agent sẽ tự xác định bài học từ prompt đầu tiên rồi nạp rubric và nguồn phù hợp.";
+        els.sessionIdLabel.textContent = "";
+        els.starters.innerHTML = "";
+        els.statusBanner.className = "status-banner";
+        renderSources([]);
+        els.chat.innerHTML = `
+          <div class="welcome">
+            <div class="welcome-kicker">Teach-back tự định tuyến</div>
+            <h3>Bắt đầu bằng điều bạn đang muốn ôn</h3>
+            <p>Không cần chọn bài trước. Hãy nói tự nhiên, ví dụ “Mình muốn ôn cách chọn metric cho sản phẩm AI, bạn đóng vai học viên nhé”. Agent sẽ tìm bài phù hợp, kiểm tra knowledge và lưu phiên sau tin nhắn đầu tiên.</p>
+            <div class="welcome-grid" id="welcomeGrid"></div>
+          </div>`;
+        const grid = $("welcomeGrid");
+        for (const lesson of state.lessons) {
+          const button = document.createElement("button");
+          button.className = "welcome-card";
+          button.innerHTML = `<small>${escapeHtml(lesson.track)}</small><strong>${escapeHtml(lesson.title)}</strong>`;
+          button.addEventListener("click", () => {
+            els.messageInput.value = `Mình muốn ôn lại phần ${lesson.title}. Bạn hãy đóng vai học viên và đặt câu hỏi để mình dạy lại nhé.`;
+            els.messageInput.focus();
+            resizeInput();
+          });
+          grid.appendChild(button);
+        }
+        renderSessions();
+        els.messageInput.focus();
+      }
+
+      function renderMessages(messages) {
+        els.chat.innerHTML = "";
+        for (const message of messages) addMessageNode(message.role, message.content, message.metadata, false);
+        const lastWithSources = [...messages].reverse().find((m) => m.metadata?.source_cards?.length);
+        renderSources(lastWithSources?.metadata?.source_cards || []);
+        scrollChat();
+      }
+
+      function addMessageNode(role, content, metadata = {}, scroll = true) {
+        const row = document.createElement("div");
+        row.className = `message ${role}`;
+        if (role !== "user") {
+          const avatar = document.createElement("div");
+          avatar.className = "avatar";
+          avatar.textContent = role === "assistant" ? "AI" : "!";
+          row.appendChild(avatar);
+        }
+        const wrap = document.createElement("div");
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = content;
+        wrap.appendChild(bubble);
+        if (metadata.provider) {
+          const meta = document.createElement("div");
+          meta.className = "message-meta";
+          meta.textContent = metadata.provider === "openai" ? `OpenAI · ${metadata.model}` : "Offline baseline";
+          wrap.appendChild(meta);
+        }
+        row.appendChild(wrap);
+        els.chat.appendChild(row);
+        if (scroll) scrollChat();
+      }
+
+      function showTyping() {
+        const row = document.createElement("div");
+        row.className = "message assistant";
+        row.id = "typingRow";
+        row.innerHTML = '<div class="avatar">AI</div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div>';
+        els.chat.appendChild(row);
+        scrollChat();
+      }
+      function hideTyping() { $("typingRow")?.remove(); }
+      function scrollChat() { requestAnimationFrame(() => { els.chat.scrollTop = els.chat.scrollHeight; }); }
+
+      function renderStarters(prompts) {
+        els.starters.innerHTML = "";
+        for (const prompt of prompts) {
+          const button = document.createElement("button");
+          button.className = "chip";
+          button.textContent = prompt;
+          button.addEventListener("click", () => {
+            els.messageInput.value = prompt + " Theo mình, ";
+            els.messageInput.focus();
+            resizeInput();
+          });
+          els.starters.appendChild(button);
+        }
+      }
+
+      function renderSources(sources) {
+        els.sourceList.innerHTML = "";
+        if (!sources?.length) {
+          els.sourceList.innerHTML = '<div class="empty-note">Nguồn sẽ xuất hiện sau khi bạn dạy lại.</div>';
+          return;
+        }
+        for (const source of sources) {
+          const div = document.createElement("article");
+          div.className = "source";
+          const quote = source.quote ? `<blockquote>“${escapeHtml(source.quote)}”</blockquote>` : "";
+          div.innerHTML = `<b>${escapeHtml(source.id)}</b><small>${escapeHtml(source.file)} · ${escapeHtml(source.locator)}</small><p>${escapeHtml(source.paraphrase)}</p>${quote}`;
+          els.sourceList.appendChild(div);
+        }
+      }
+
+      function renderStatus(status) {
+        const messages = {
+          out_of_scope: "Nội dung này chưa có trong knowledge hiện tại; tiến độ học được giữ nguyên.",
+          needs_recovery: "Chưa đủ bằng chứng — hãy dùng gợi ý trong phản hồi để thử lại.",
+          mastered: "Hoàn thành: bạn đã dạy lại đủ các ý cốt lõi của bài.",
+        };
+        els.statusBanner.className = "status-banner";
+        if (messages[status]) {
+          els.statusBanner.textContent = messages[status];
+          els.statusBanner.classList.add("show", status);
+        }
+      }
+
+      async function refreshSessions() {
+        const payload = await api("/api/sessions?limit=40");
+        state.sessions = payload.sessions;
+        renderSessions();
+      }
+
+      async function clearHistory() {
+        if (!state.sessions.length) return;
+        const confirmed = window.confirm("Xóa toàn bộ lịch sử teach-back đã lưu trên backend? Thao tác này không thể hoàn tác.");
+        if (!confirmed) return;
+        try {
+          const result = await api("/api/sessions/clear", { method: "POST", body: "{}" });
+          state.sessions = [];
+          showWelcome();
+          toast(`Đã xóa ${result.deleted_sessions} phiên.`);
+        } catch (error) { toast(error.message); }
+      }
+
+      async function loadSession(sessionId) {
+        try {
+          state.activeSession = await api(`/api/sessions/${encodeURIComponent(sessionId)}`);
+          renderActiveSession();
+        } catch (error) { toast(error.message); }
+      }
+
+      async function sendMessage() {
+        const content = els.messageInput.value.trim();
+        if (!content || state.sending) return;
+        if (state.provider === "openai" && !state.apiKey && !state.runtime?.server_has_api_key) {
+          openSettings();
+          toast("Nhập API key để dùng OpenAI realtime.");
+          return;
+        }
+        state.sending = true;
+        const startingChat = !state.activeSession;
+        els.sendBtn.disabled = true;
+        els.messageInput.disabled = true;
+        if (startingChat) els.chat.innerHTML = "";
+        addMessageNode("user", content);
+        els.messageInput.value = "";
+        resizeInput();
+        showTyping();
+        try {
+          const endpoint = startingChat
+            ? "/api/chat"
+            : `/api/sessions/${encodeURIComponent(state.activeSession.id)}/messages`;
+          const result = await api(endpoint, {
+            method: "POST",
+            body: JSON.stringify({
+              content,
+              provider: state.provider,
+              model: state.model,
+              api_key: state.apiKey,
+            }),
+          });
+          hideTyping();
+          if (startingChat && result.needs_clarification) {
+            addMessageNode("assistant", result.agent_response, { provider: state.provider, model: state.model });
+            return;
+          }
+          if (startingChat) {
+            state.activeSession = result.session;
+            await refreshSessions();
+            renderActiveSession();
+            toast(`Đã nhận diện: ${result.routed_lesson.title}`);
+            return;
+          }
+          if (result.session_switched && result.session) {
+            state.activeSession = result.session;
+            await refreshSessions();
+            renderActiveSession();
+            toast("Đã chuyển chủ đề: " + result.routed_lesson.title);
+            return;
+          }
+          addMessageNode("assistant", result.agent_response, result.message.metadata);
+          state.activeSession.status = result.status;
+          state.activeSession.progress = result.progress;
+          state.activeSession.covered_points = result.covered_points;
+          state.activeSession.misconceptions = result.misconceptions;
+          state.activeSession.messages.push(
+            { role: "user", content, metadata: {} },
+            result.message
+          );
+          renderSources(result.source_cards);
+          renderStatus(result.status);
+          renderActiveSessionStateOnly();
+          await refreshSessions();
+        } catch (error) {
+          hideTyping();
+          addMessageNode("system", `Không gửi được: ${error.message}`);
+        } finally {
+          state.sending = false;
+          els.sendBtn.disabled = false;
+          els.messageInput.disabled = false;
+          els.messageInput.focus();
+        }
+      }
+
+      function renderActiveSessionStateOnly() {
+        const session = state.activeSession;
+        const lesson = currentLesson();
+        els.progressText.textContent = `${session.progress}%`;
+        els.progressFill.style.width = `${session.progress}%`;
+        const covered = new Set(session.covered_points || []);
+        [...els.pointRow.children].forEach((node, index) => {
+          const point = lesson.points[index];
+          node.classList.toggle("covered", covered.has(point.id));
+          node.querySelector("b").textContent = `${covered.has(point.id) ? "✓" : point.id} · ${point.weight}%`;
+        });
+      }
+
+      function openSettings() {
+        els.providerInput.value = state.provider;
+        els.modelInput.value = state.model;
+        els.apiKeyInput.value = state.apiKey;
+        updateSettingsVisibility();
+        els.settingsModal.classList.add("show");
+      }
+      function closeSettings() { els.settingsModal.classList.remove("show"); }
+      function updateSettingsVisibility() {
+        const online = els.providerInput.value === "openai";
+        els.modelField.style.display = online ? "block" : "none";
+        els.keyField.style.display = online ? "block" : "none";
+      }
+      function saveSettings() {
+        state.provider = els.providerInput.value;
+        state.model = els.modelInput.value.trim() || "gpt-5-mini";
+        state.apiKey = els.apiKeyInput.value.trim();
+        localStorage.setItem("tb_provider", state.provider);
+        localStorage.setItem("tb_model", state.model);
+        renderRuntime();
+        closeSettings();
+        toast(state.provider === "openai" ? "Đã bật OpenAI realtime." : "Đã chuyển sang offline.");
+      }
+
+      function resizeInput() {
+        els.messageInput.style.height = "auto";
+        els.messageInput.style.height = Math.min(els.messageInput.scrollHeight, 130) + "px";
+      }
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+        })[char]);
+      }
+
+      async function boot() {
+        try {
+          const [runtime, lessonPayload, sessionPayload] = await Promise.all([
+            api("/api/runtime"), api("/api/lessons"), api("/api/sessions?limit=40"),
+          ]);
+          state.runtime = runtime;
+          state.lessons = lessonPayload.lessons;
+          state.sessions = sessionPayload.sessions;
+          if (!localStorage.getItem("tb_provider")) state.provider = runtime.default_provider;
+          if (!localStorage.getItem("tb_model")) state.model = runtime.default_model;
+          els.keyPolicy.textContent = runtime.api_key_policy + (runtime.server_has_api_key ? " Server đã có key từ biến môi trường." : "");
+          renderRuntime();
+          renderSessions();
+          showWelcome();
+        } catch (error) {
+          els.chat.innerHTML = `<div class="empty-note">Không tải được backend: ${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      els.sendBtn.addEventListener("click", sendMessage);
+      els.messageInput.addEventListener("input", resizeInput);
+      els.messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); }
+      });
+      els.newSessionBtn.addEventListener("click", showWelcome);
+      els.mobileNewBtn.addEventListener("click", showWelcome);
+      els.clearHistoryBtn.addEventListener("click", clearHistory);
+      els.settingsBtn.addEventListener("click", openSettings);
+      els.closeSettingsBtn.addEventListener("click", closeSettings);
+      els.cancelSettingsBtn.addEventListener("click", closeSettings);
+      els.saveSettingsBtn.addEventListener("click", saveSettings);
+      els.providerInput.addEventListener("change", updateSettingsVisibility);
+      els.toggleKeyBtn.addEventListener("click", () => {
+        const visible = els.apiKeyInput.type === "text";
+        els.apiKeyInput.type = visible ? "password" : "text";
+        els.toggleKeyBtn.textContent = visible ? "Hiện" : "Ẩn";
+      });
+      els.settingsModal.addEventListener("click", (event) => {
+        if (event.target === els.settingsModal) closeSettings();
+      });
+      boot();
+    })();
+  </script>
+</body>
+</html>
