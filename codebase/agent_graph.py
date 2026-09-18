@@ -27,9 +27,21 @@ from agent_core import (
     matches_any,
     normalize_text,
 )
-from turn_policy import classify_turn_intent, recovery_action, requests_direct_answer
-
 MAX_TURNS_PER_SESSION = 20
+
+
+def recovery_action(attempt: int, *, misconception: bool = False) -> tuple[str, str]:
+    """Map a failed attempt count to the next support level."""
+    if attempt <= 1:
+        return (
+            "SOCRATIC_CORRECTION" if misconception else "SOCRATIC_QUESTION",
+            "socratic_question",
+        )
+    if attempt == 2:
+        return "NARROW_QUESTION", "narrowed_question"
+    if attempt == 3:
+        return "CONTROLLED_HINT", "controlled_hint"
+    return "SHOW_RECOVERY", "knowledge_recovery"
 SESSION_LIMIT_MESSAGE = (
     "Mình đã hỏi khá nhiều lượt rồi; hãy đọc lại gợi ý này rồi quay lại dạy "
     "tiếp khi sẵn sàng nhé."
@@ -164,9 +176,6 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         explanation = state["explanation"]
         assessment = agent._validate_assessment(state["raw_assessment"], explanation)
 
-        rule_intent = classify_turn_intent(explanation)
-        if rule_intent != "teachback_answer":
-            assessment["intent"] = rule_intent
         intent = assessment.get("intent", "teachback_answer")
 
         explicit_points = agent._detect_points(explanation)
@@ -285,7 +294,6 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
 
         update: dict[str, Any] = {}
         intent = assessment.get("intent", "teachback_answer")
-        direct_answer_requested = requests_direct_answer(state.get("explanation", ""))
         recovery_stage = "none"
         if intent == "authority_attack":
             status, action, target_gap = "authority_attack", "BOUNDARY_RESPONSE", None
@@ -295,14 +303,11 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             status = "coaching"
             target_gap = assessment["recommended_gap"] or (missing[0] if missing else "K2")
             if intent == "source_request":
-                action = "SHOW_RECOVERY"
-                recovery_stage = "knowledge_recovery"
-            elif target_gap == "K1":
-                action = "ASK_MECHANISM"
-            elif target_gap in {"K2", "K3"}:
-                action = "ASK_CAUSE"
+                action = "ANSWER_WITH_SOURCES"
+            elif intent == "clarification_question":
+                action = "ANSWER_CLARIFICATION"
             else:
-                action = "ASK_MITIGATION"
+                action = "START_COACHING"
         elif assessment["copied_source"]:
             status = "copied_source"
             action = "ASK_REPHRASE"
@@ -311,8 +316,6 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             status = "misconception"
             target_gap = agent.knowledge.misconception_gap(first_misconception or "M1")
             attempts = attempts_by_gap.get(target_gap, 0) + 1
-            if direct_answer_requested:
-                attempts = max(attempts, 4)
             attempts_by_gap[target_gap] = attempts
             update["attempts_by_gap"] = attempts_by_gap
             action, recovery_stage = recovery_action(attempts, misconception=True)
@@ -321,12 +324,10 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             previous_gap = state.get("last_target_gap")
             target_gap = (
                 previous_gap
-                if direct_answer_requested and previous_gap in missing
+                if previous_gap in missing
                 else assessment["recommended_gap"] or (missing[0] if missing else "K1")
             )
             attempts = attempts_by_gap.get(target_gap, 0) + 1
-            if direct_answer_requested:
-                attempts = max(attempts, 4)
             attempts_by_gap[target_gap] = attempts
             update["attempts_by_gap"] = attempts_by_gap
             action, recovery_stage = recovery_action(attempts)
@@ -524,12 +525,9 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         base_progress = sum(
             agent.knowledge.point_weights[point] for point in session_state.covered_points
         )
-        if session_state.mastery_complete:
-            progress = 100
-        elif not missing and not unresolved:
-            progress = 90
-        else:
-            progress = min(base_progress, 70 if unresolved else 85)
+        # Progress represents mastered knowledge weight only. Conversation
+        # stages such as a transfer question must not artificially cap it.
+        progress = 100 if session_state.mastery_complete else base_progress
 
         tool_trace: list[dict[str, Any]] = []
         if retrieval:

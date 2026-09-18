@@ -2,342 +2,891 @@
   "schema_version": "2.0",
   "lessons": [
     {
-      "id": "why-llm-hallucinates",
-      "track": "LLM Foundation",
-      "title": "Vì sao LLM có thể bịa?",
-      "description": "Dạy lại cơ chế sinh token, nguyên nhân hallucination và cách giảm rủi ro.",
-      "greeting": "Mình đang học vì sao LLM có thể tạo câu trả lời nghe rất hợp lý nhưng vẫn sai. Bạn hãy dạy lại bằng lời của mình nhé.",
-      "task": "Giải thích vì sao LLM có thể bịa, nêu một ví dụ và một cách giảm rủi ro.",
-      "scope_terms": ["llm", "model", "token", "hallucination", "ảo giác", "bịa", "rag", "temperature", "context", "kiểm chứng", "nguồn"],
-      "starter_prompts": [
-        "LLM tạo câu trả lời như thế nào?",
-        "Vì sao câu trả lời trôi chảy vẫn có thể sai?",
-        "RAG có loại bỏ hoàn toàn hallucination không?"
+      "id": "day-1-lecture-2",
+      "track": "Day 1",
+      "title": "Day 1 · Lecture 2. N-gram LMs",
+      "description": "Ôn tập từ file Lecture 2. N-gram LMs.pptx.",
+      "greeting": "Chào mừng bạn đến với khóa học về N-grams và Mô hình hóa Ngôn ngữ!",
+      "task": "Hãy khám phá cách áp dụng mô hình N-gram và các kỹ thuật làm mượt trong thực tế.",
+      "scope_terms": [
+        "N-gram",
+        "Mô hình xác suất",
+        "Kỹ thuật làm mượt",
+        "Đánh giá mô hình",
+        "Perplexity"
       ],
+      "starter_prompts": [
+        "Bạn hiểu N-gram là gì?",
+        "Hãy cho biết ứng dụng của N-gram trong ngôn ngữ tự nhiên.",
+        "Cách nào để xử lý dữ liệu thưa trong mô hình ngôn ngữ?"
+      ],
+      "transfer_question": "Làm thế nào bạn có thể áp dụng các kỹ thuật N-gram trong dự án xử lý ngôn ngữ tự nhiên của mình?",
       "points": [
         {
-          "id": "K1",
-          "label": "Cơ chế sinh token",
+          "id": "P1",
+          "label": "N-grams trong Mô hình Ngôn ngữ",
           "weight": 25,
-          "ground_truth": "LLM sinh văn bản bằng cách dự đoán token tiếp theo theo phân bố xác suất rồi lặp lại quá trình.",
-          "signals": ["dự đoán token", "đoán token", "token tiếp theo", "phân bố xác suất", "sinh văn bản theo xác suất"],
-          "question": "Theo bạn, ở mỗi bước LLM thực sự đang làm gì để tạo ra token tiếp theo?",
-          "recovery": "Hãy bắt đầu từ ba từ khóa: token, xác suất và lặp lại.",
-          "source_ids": ["D1-S10", "D1-S11", "D1-S12", "T04-047", "T06-136"]
+          "ground_truth": "Introduction to N-grams",
+          "sub_concepts": [
+            "Định nghĩa N-grams",
+            "Các loại N-grams",
+            "Ứng dụng của N-grams"
+          ],
+          "accepted_signals": [
+            "N-grams là chuỗi liên tiếp của n mục từ một văn bản hoặc lời nói.",
+            "N-grams giúp ước lượng xác suất ngôn ngữ.",
+            "N-grams có ứng dụng trong nhận dạng giọng nói và dịch máy."
+          ],
+          "signals": [
+            "Biết về khái niệm N-gram và định nghĩa của nó.",
+            "Có thể liệt kê các loại N-gram.",
+            "N-gram được ứng dụng trong các lĩnh vực ngôn ngữ tự nhiên."
+          ],
+          "question": "Bạn có thể trình bày N-gram là gì không?",
+          "recovery": "Nếu bạn không nhớ về khái niệm này, hãy nghĩ về cách mà N-grams được sử dụng trong các ứng dụng thực tiễn như dịch máy.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-001-002",
+              "quote": "Introduction to N-grams"
+            }
+          ],
+          "source_ids": [
+            "SRC-001-002"
+          ],
+          "required": true
         },
         {
-          "id": "K2",
-          "label": "Hợp lý không đồng nghĩa đúng",
+          "id": "P2",
+          "label": "Mô hình Ngôn ngữ Xác suất",
           "weight": 25,
-          "ground_truth": "Mục tiêu tạo chuỗi phù hợp với ngữ cảnh không đồng nghĩa với việc tự kiểm chứng sự thật.",
-          "signals": ["hợp lý nhưng sai", "trôi chảy nhưng sai", "không tự kiểm chứng", "chưa chắc đúng", "không phải sự thật"],
-          "question": "Vì sao một câu nghe rất tự tin và trôi chảy vẫn chưa phải bằng chứng rằng nó đúng?",
-          "recovery": "Phân biệt hai việc: tạo câu phù hợp với ngữ cảnh và kiểm chứng sự thật.",
-          "source_ids": ["T06-138", "D1-S20"]
+          "ground_truth": "Probabilistic Language Models",
+          "sub_concepts": [
+            "Định nghĩa các Mô hình xác suất"
+          ],
+          "accepted_signals": [
+            "Mô hình ngôn ngữ xác suất gán xác suất cho các chuỗi từ.",
+            "Mục tiêu của mô hình xác suất là tính toán xác suất của một câu hoặc chuỗi từ."
+          ],
+          "signals": [
+            "Có thể giải thích mục đích của mô hình ngôn ngữ xác suất.",
+            "Hiểu được vai trò của xác suất trong ngôn ngữ tự nhiên."
+          ],
+          "question": "Mô hình ngôn ngữ xác suất được định nghĩa như thế nào?",
+          "recovery": "Nếu bạn gặp khó khăn trong việc hiểu mô hình xác suất, hãy nhớ rằng nó giúp chúng ta ước lượng các câu trong ngôn ngữ.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-003-001",
+              "quote": "Probabilistic Language Models"
+            }
+          ],
+          "source_ids": [
+            "SRC-003-001"
+          ],
+          "required": true
         },
         {
-          "id": "K3",
-          "label": "Nguồn gây thiếu căn cứ",
+          "id": "P3",
+          "label": "Kỹ thuật Smoothing",
           "weight": 25,
-          "ground_truth": "Dữ liệu lệch, knowledge cutoff và context hữu hạn có thể khiến model thiếu hoặc dùng sai căn cứ.",
-          "signals": ["dữ liệu thiên lệch", "dữ liệu bị lệch", "knowledge cutoff", "thông tin mới", "context hữu hạn", "thiếu ngữ cảnh"],
-          "question": "Ngoài cơ chế sinh token, dữ liệu và context có thể làm model thiếu căn cứ như thế nào?",
-          "recovery": "Thử xét ba nguồn rủi ro: dữ liệu huấn luyện, thời điểm cutoff và context hiện có.",
-          "source_ids": ["D1-S16", "D1-S20", "T06-138", "T06-148", "T06-149"]
+          "ground_truth": "Smoothing: Add-one (Laplace) smoothing",
+          "sub_concepts": [
+            "Smoothing: Laplace Smoothing",
+            "Smoothing: Kneser-Ney Smoothing"
+          ],
+          "accepted_signals": [
+            "Các kỹ thuật smoothing giúp cải thiện ước lượng xác suất.",
+            "Laplace smoothing là một trong những phương pháp xử lý dữ liệu thưa."
+          ],
+          "signals": [
+            "Bạn có thể mô tả vai trò của các kỹ thuật smoothing trong mô hình ngôn ngữ.",
+            "Có thể giải thích ý nghĩa của Laplace smoothing."
+          ],
+          "question": "Kỹ thuật smoothing là gì và tại sao nó quan trọng trong mô hình ngôn ngữ?",
+          "recovery": "Nếu bạn không hiểu rõ về các kỹ thuật này, hãy tìm hiểu cách chúng giúp bạn xử lý các xác suất về số liệu thưa.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-050-002",
+              "quote": "Smoothing: Add-one (Laplace) smoothing"
+            }
+          ],
+          "source_ids": [
+            "SRC-050-002"
+          ],
+          "required": true
         },
         {
-          "id": "K4",
-          "label": "Giảm rủi ro có kiểm chứng",
+          "id": "P4",
+          "label": "Đánh giá Mô hình Ngôn ngữ",
           "weight": 25,
-          "ground_truth": "RAG, tools, nguồn trích dẫn và kiểm chứng giúp giảm rủi ro nhưng không bảo đảm đúng tuyệt đối.",
-          "signals": ["rag", "tra nguồn", "trích dẫn", "kiểm chứng", "tool", "không đảm bảo tuyệt đối", "không bảo đảm tuyệt đối"],
-          "question": "Bạn sẽ thêm bước nào để giảm rủi ro, và vì sao bước đó vẫn không thể bảo đảm đúng 100%?",
-          "recovery": "Nghĩ đến việc bổ sung nguồn, dùng tool và giữ một bước kiểm chứng.",
-          "source_ids": ["D1-S16", "D1-S20", "D1-S29", "T06-139", "T06-148"]
+          "ground_truth": "Evaluation: How good is our model?",
+          "sub_concepts": [
+            "Định nghĩa Perplexity",
+            "Đánh giá Ngoại sinh"
+          ],
+          "accepted_signals": [
+            "Đánh giá mô hình ngôn ngữ giúp hiểu rõ về hiệu suất của nó.",
+            "Perplexity là một chỉ số quan trọng để đo lường chất lượng của mô hình."
+          ],
+          "signals": [
+            "Có thể giải thích khái niệm perplexity.",
+            "Bạn hiểu cách đánh giá một mô hình ngôn ngữ?"
+          ],
+          "question": "Làm thế nào để đánh giá mô hình ngôn ngữ?",
+          "recovery": "Nếu bạn cảm thấy việc đánh giá là khó khăn, hãy thử tìm hiểu khái niệm perplexity và cách nó được sử dụng trong thực tiễn.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-030-001",
+              "quote": "Evaluation: How good is our model?"
+            }
+          ],
+          "source_ids": [
+            "SRC-030-001"
+          ],
+          "required": true
         }
       ],
-      "misconceptions": [
-        {
-          "id": "M3",
-          "claim": "Đặt temperature bằng 0 thì LLM luôn đúng và không thể bịa.",
-          "signals": ["temperature bằng 0 thì luôn đúng", "temperature 0 thì không bịa", "temperature bằng 0 sẽ không bao giờ hallucinate"],
-          "explanation": "Temperature thấp chỉ làm cách chọn token ổn định hơn; nó không bổ sung tri thức hoặc bước kiểm chứng sự thật.",
-          "socratic_question": "Temperature thấp làm cách chọn token ổn định hơn, nhưng nó có bổ sung sự kiện mà model chưa từng biết không?",
-          "conflicts_with": ["K4"]
-        },
-        {
-          "id": "M4",
-          "claim": "Có RAG thì câu trả lời chính xác tuyệt đối.",
-          "signals": ["RAG chính xác 100%", "RAG thì không thể bịa", "có RAG là hết hallucination"],
-          "explanation": "RAG có thể truy xuất nhầm hoặc dùng nguồn sai, nên chỉ giảm rủi ro chứ không bảo đảm chính xác tuyệt đối.",
-          "socratic_question": "Nếu hệ thống truy xuất nhầm đoạn hoặc tài liệu nguồn vốn đã sai, RAG còn bảo đảm tuyệt đối được không?",
-          "conflicts_with": ["K4"]
-        },
-        {
-          "id": "M1",
-          "claim": "LLM luôn tra cứu một cơ sở dữ liệu sự thật trước khi trả lời.",
-          "signals": ["luôn tra database trước khi trả lời", "luôn tra cơ sở dữ liệu sự thật", "database lỗi nên model bịa"],
-          "explanation": "LLM mặc định dự đoán token theo xác suất; chỉ tra nguồn khi hệ thống được nối với retrieval hoặc tool.",
-          "socratic_question": "Nếu model luôn tra một cơ sở dữ liệu sự thật, vì sao đầu ra của nó lại là một phân bố xác suất trên token?",
-          "conflicts_with": ["K1", "K2"]
-        },
-        {
-          "id": "M2",
-          "claim": "LLM cố ý nói dối dù biết đáp án đúng.",
-          "signals": ["LLM cố ý nói dối", "model biết đáp án sai nhưng vẫn nói", "AI lừa để tỏ ra thông minh"],
-          "explanation": "Không cần giả định ý định nói dối: cơ chế sinh phần tiếp nối nghe hợp lý đã đủ tạo ra câu sai.",
-          "socratic_question": "Ta có cần giả định model có ý định nói dối, hay cơ chế sinh phần tiếp nối nghe hợp lý đã đủ giải thích?",
-          "conflicts_with": ["K1", "K2"]
-        },
-        {
-          "id": "M5",
-          "claim": "Hallucination chỉ xảy ra với thông tin mới sau knowledge cutoff.",
-          "signals": ["hallucination chỉ do cutoff", "chỉ thông tin mới mới bị bịa", "dữ liệu cũ luôn đúng"],
-          "explanation": "Hallucination còn có thể đến từ dữ liệu lệch, thiếu bằng chứng trong context hoặc cơ chế sinh xác suất.",
-          "socratic_question": "Ngoài dữ liệu mới, điều gì xảy ra khi dữ liệu huấn luyện lệch hoặc bằng chứng không nằm trong context?",
-          "conflicts_with": ["K1", "K2", "K3"]
-        },
-        {
-          "id": "M6",
-          "claim": "Context càng dài thì model luôn càng chính xác.",
-          "signals": ["context càng dài càng chính xác", "nhét hết tài liệu thì không bịa", "context dài luôn đúng"],
-          "explanation": "Context dài vẫn có thể chứa nhiễu hoặc làm model bỏ sót phần liên quan; nó không tạo bảo đảm chính xác.",
-          "socratic_question": "Nếu context dài chứa nhiễu hoặc làm thông tin liên quan bị bỏ sót, nó còn bảo đảm chính xác được không?",
-          "conflicts_with": ["K3", "K4"]
-        }
-      ],
+      "misconceptions": [],
       "sources": [
-        {"id": "D1-S10", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 10", "paraphrase": "Transformer tạo phân bố xác suất trên các token ứng viên."},
-        {"id": "D1-S11", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 11", "paraphrase": "Một token được chọn từ phân bố xác suất và nối vào ngữ cảnh."},
-        {"id": "D1-S12", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 12", "paraphrase": "Quá trình dự đoán token tiếp theo được lặp tự hồi quy."},
-        {"id": "D1-S16", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 16", "paraphrase": "Attention và context có giới hạn nên bằng chứng liên quan có thể bị bỏ sót."},
-        {"id": "T04-047", "type": "transcript", "file": "transcript-04-clean.md", "locator": "T04-047", "paraphrase": "LLM nối token vừa sinh vào chuỗi rồi tiếp tục dự đoán token kế tiếp."},
-        {"id": "T06-136", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-136", "paraphrase": "LLM dự báo token theo xác suất; temperature tác động tới cách chọn token."},
-        {"id": "T06-138", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-138", "paraphrase": "Không nên giả định đầu ra luôn đúng; dữ liệu Internet có thể chứa thiên lệch."},
-        {"id": "T06-139", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-139", "paraphrase": "RAG bổ sung dữ liệu và nguồn trích dẫn để giảm rủi ro."},
-        {"id": "T06-148", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-148", "paraphrase": "Knowledge cutoff tạo khoảng trống thông tin; công cụ tìm kiếm có thể bổ sung dữ liệu mới."},
-        {"id": "T06-149", "type": "transcript", "file": "transcript-06-clean.md", "locator": "T06-149", "paraphrase": "Context window giới hạn lượng thông tin model nhìn thấy trong một lần xử lý."},
-        {"id": "D1-S20", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 20", "paraphrase": "Model tối ưu câu phù hợp với ngữ cảnh chứ không mặc định tra cứu sự thật."},
-        {"id": "D1-S29", "type": "slide", "file": "d1-slide-hackathon.pdf", "locator": "trang 29", "paraphrase": "Temperature thay đổi cách chọn token nhưng không bổ sung tri thức mới."}
-      ]
+        {
+          "id": "SRC-001-002",
+          "type": "pptx",
+          "file": "Lecture 2. N-gram LMs.pptx",
+          "locator": "slide 1, đối tượng 2",
+          "paraphrase": "Introduction to N-grams",
+          "quote": "Introduction to N-grams"
+        },
+        {
+          "id": "SRC-003-001",
+          "type": "pptx",
+          "file": "Lecture 2. N-gram LMs.pptx",
+          "locator": "slide 3, đối tượng 1",
+          "paraphrase": "Probabilistic Language Models",
+          "quote": "Probabilistic Language Models"
+        },
+        {
+          "id": "SRC-030-001",
+          "type": "pptx",
+          "file": "Lecture 2. N-gram LMs.pptx",
+          "locator": "slide 30, đối tượng 1",
+          "paraphrase": "Evaluation: How good is our model?",
+          "quote": "Evaluation: How good is our model?"
+        },
+        {
+          "id": "SRC-050-002",
+          "type": "pptx",
+          "file": "Lecture 2. N-gram LMs.pptx",
+          "locator": "slide 50, đối tượng 2",
+          "paraphrase": "Smoothing: Add-one (Laplace) smoothing",
+          "quote": "Smoothing: Add-one (Laplace) smoothing"
+        }
+      ],
+      "transfer_point_ids": [
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "mastery_criteria": {
+        "required_point_ids": [
+          "P1",
+          "P2",
+          "P3",
+          "P4"
+        ],
+        "require_no_misconceptions": true,
+        "require_transfer_example": true
+      }
     },
     {
-      "id": "ai-problem-scoping",
-      "track": "AI Product",
-      "title": "Xác định đúng bài toán AI",
-      "description": "Đi từ yêu cầu mơ hồ tới pain point, phạm vi và problem statement đo được.",
-      "greeting": "Hãy chọn một ý tưởng AI bạn đang quan tâm và dạy mình cách kiểm tra đó có thật sự là bài toán đáng làm.",
-      "task": "Trình bày cách khám phá, thu hẹp và viết một bài toán AI đáng làm.",
-      "scope_terms": ["bài toán", "pain point", "người dùng", "user", "problem statement", "double diamond", "impact", "effort", "quick win", "quy trình", "phạm vi"],
-      "starter_prompts": [
-        "Một yêu cầu mơ hồ cần được bóc tách thế nào?",
-        "Dùng impact–effort để chọn quick win ra sao?",
-        "Một problem statement tốt cần những gì?"
+      "id": "day-2-lecture-4",
+      "track": "Day 2",
+      "title": "Day 2 · Lecture 4. Vector Semantics and Embedding (part 2)",
+      "description": "Ôn tập từ file Lecture 4. Vector Semantics and Embedding (part 2) (1).pptx.",
+      "greeting": "Chào mừng đến với bài học về Vector Semantics và Embedding!",
+      "task": "Giải thích các khái niệm và ứng dụng của vector nhúng, trình bày mô hình Word2Vec, và áp dụng vector nhúng trong các bài toán NLP.",
+      "scope_terms": [
+        "Vector Semantics",
+        "Vector Embeddings",
+        "Word2Vec"
       ],
+      "starter_prompts": [
+        "Hãy giải thích vector nhúng là gì?",
+        "Mô hình Skip-gram hoạt động như thế nào?",
+        "Tại sao vector nhúng lại quan trọng trong NLP?"
+      ],
+      "transfer_question": "Làm thế nào chúng ta có thể sử dụng vector nhúng để cải thiện khả năng hiểu ngôn ngữ của máy tính?",
       "points": [
         {
-          "id": "K1",
-          "label": "Người dùng, pain point, quy trình",
+          "id": "P1",
+          "label": "Vector Semantics",
           "weight": 25,
-          "ground_truth": "Bắt đầu từ đối tượng, pain point và quy trình hiện tại thay vì nhảy thẳng vào giải pháp AI.",
-          "signals": ["đối tượng là ai", "người dùng", "pain point", "điểm đau", "quy trình hiện tại", "không nhảy vào giải pháp"],
-          "question": "Ai gặp vấn đề, họ đang làm theo quy trình nào và nút thắt nằm ở đâu?",
-          "recovery": "Mô tả một người dùng cụ thể, công việc hiện tại và điều khiến họ mất thời gian hoặc chất lượng.",
-          "source_ids": ["T01-017", "T02-015"]
+          "ground_truth": "\"I want a glass of orange ______.\"",
+          "sub_concepts": [
+            "Definition of Vector Semantics"
+          ],
+          "accepted_signals": [
+            "Khái niệm về nghĩa từ",
+            "Mối liên hệ giữa nghĩa và vector"
+          ],
+          "signals": [
+            "Định nghĩa nghĩa từ",
+            "Sự quan trọng của vector trong NLP"
+          ],
+          "question": "Vector semantics cho chúng ta hiểu nghĩa của từ như thế nào?",
+          "recovery": "Hãy xem xét ví dụ cụ thể để hiểu rõ hơn về cách vector đại diện cho nghĩa.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-006-004",
+              "quote": "I want a glass of orange ______."
+            }
+          ],
+          "source_ids": [
+            "SRC-006-004"
+          ],
+          "required": true
         },
         {
-          "id": "K2",
-          "label": "Khám phá rồi hội tụ",
+          "id": "P2",
+          "label": "Vector Embeddings",
           "weight": 25,
-          "ground_truth": "Mở rộng insight bằng quan sát, phỏng vấn, log; sau đó gom nhóm, Five Whys và hội tụ vào root cause.",
-          "signals": ["quan sát", "phỏng vấn", "khảo sát", "log hành vi", "five whys", "root cause", "phân kỳ", "hội tụ", "gom nhóm"],
-          "question": "Bạn sẽ thu insight bằng cách nào rồi lọc chúng về một root cause có thể kiểm chứng?",
-          "recovery": "Tách hai pha: mở rộng bằng dữ liệu người dùng, rồi gom nhóm và đào sâu nguyên nhân.",
-          "source_ids": ["T01-071", "T01-077"]
+          "ground_truth": "\"Dense vectors may generalize better than explicit counts.\"",
+          "sub_concepts": [
+            "Vector Properties"
+          ],
+          "accepted_signals": [
+            "Ý nghĩa của vector nhúng",
+            "Tính chất của dense vectors"
+          ],
+          "signals": [
+            "Sự khác biệt giữa vector thưa và vector dày",
+            "Lợi thế của dense vectors"
+          ],
+          "question": "Điểm mạnh của vector nhúng so với các phương pháp khác là gì?",
+          "recovery": "Hãy đưa ra ví dụ minh họa về cách mà dense vectors hoạt động tốt hơn trong một số tình huống.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-005-002",
+              "quote": "Why dense vectors? Short vectors may be easier to use as features in machine learning (fewer weights to tune) Dense vectors may generalize better than explicit counts Dense vectors may do better at capturing synonymy: car and automobile are synonyms; but are distinct dimensions a"
+            }
+          ],
+          "source_ids": [
+            "SRC-005-002"
+          ],
+          "required": true
         },
         {
-          "id": "K3",
-          "label": "Ưu tiên theo impact–effort",
+          "id": "P3",
+          "label": "Word2Vec and SGNS",
           "weight": 25,
-          "ground_truth": "So sánh tác động với nỗ lực để chọn quick win có giá trị cao và chi phí thấp.",
-          "signals": ["impact effort", "tác động nỗ lực", "tác động và nỗ lực", "quick win", "high impact", "low effort", "ưu tiên"],
-          "question": "Nếu có nhiều pain point, bạn sẽ định lượng impact và effort để chọn việc đầu tiên thế nào?",
-          "recovery": "Ước lượng lợi ích nhận được và nguồn lực phải bỏ ra cho từng lựa chọn.",
-          "source_ids": ["T01-074", "T01-078", "T02-013"]
+          "ground_truth": "\"Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS).\"",
+          "sub_concepts": [
+            "Skip-gram model",
+            "Loss Function in SGNS"
+          ],
+          "accepted_signals": [
+            "Cách thức hoạt động của Word2Vec",
+            "Giới thiệu mô hình Skip-gram"
+          ],
+          "signals": [
+            "Lợi ích của SGNS trong việc tạo ra vector nhúng",
+            "Mục tiêu của mô hình Skip-gram"
+          ],
+          "question": "Skip-gram là gì và tại sao nó lại quan trọng trong việc huấn luyện vector nhúng?",
+          "recovery": "Bạn có thể nêu rõ cách mà tình huống nhất định ảnh hưởng đến kết quả của mô hình này.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-015-002",
+              "quote": "Popular embedding method Very fast to train Code available on the web Idea: predict rather than count Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS)"
+            }
+          ],
+          "source_ids": [
+            "SRC-015-002"
+          ],
+          "required": true
         },
         {
-          "id": "K4",
-          "label": "Problem statement đo được",
+          "id": "P4",
+          "label": "Cultural Bias in Embeddings",
           "weight": 25,
-          "ground_truth": "Problem statement cần có đối tượng, quy trình, nút thắt, tác động và tiêu chí thành công định lượng được.",
-          "signals": ["problem statement", "phát biểu vấn đề", "tiêu chí thành công", "định lượng", "tiết kiệm thời gian", "đo lường", "nút thắt"],
-          "question": "Bạn có thể viết bài toán đó thành một câu có đối tượng, nút thắt và con số thành công không?",
-          "recovery": "Dùng mẫu: [ai] đang [quy trình], bị [nút thắt], thành công khi [chỉ số].",
-          "source_ids": ["T02-015", "T02-018"]
+          "ground_truth": "\"Ask 'father : doctor :: mother : x' x = nurse.\"",
+          "sub_concepts": [
+            "Measuring Cultural Bias"
+          ],
+          "accepted_signals": [
+            "Nhận biết phần nào của văn hóa được phản ánh trong embeddings",
+            "Tác động của bias đến kết quả huấn luyện"
+          ],
+          "signals": [
+            "Phân tích bias trong model embeddings",
+            "Cách đánh giá sự thiên lệch văn hóa"
+          ],
+          "question": "Cultural bias trong embeddings ảnh hưởng như thế nào đến kết quả xử lý ngôn ngữ?",
+          "recovery": "Hãy xem xét cách các_embedding có thể tạo ra những thiên lệch trong một số ngữ cảnh.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-048-002",
+              "quote": "Ask “Paris : France :: Tokyo : x” x = Japan Ask “father : doctor :: mother : x” x = nurse Ask “man : computer programmer :: woman : x” x = homemaker"
+            }
+          ],
+          "source_ids": [
+            "SRC-048-002"
+          ],
+          "required": true
         }
       ],
       "misconceptions": [
         {
-          "id": "M-SCOPE-1",
-          "claim": "Có ý tưởng AI là có thể bắt đầu xây ngay, không cần kiểm tra pain point.",
-          "signals": ["có ý tưởng AI là xây luôn", "không cần tìm pain point", "không cần hiểu người dùng"],
-          "explanation": "Giải pháp AI chỉ đáng làm sau khi xác định người dùng, pain point và quy trình hiện tại.",
-          "conflicts_with": ["K1", "K4"]
+          "id": "C1",
+          "claim": "Vector nhúng chỉ là một dạng mã hóa đơn giản của từ.",
+          "explanation": "Vector nhúng không chỉ là mã hóa mà còn phản ánh nghĩa và ngữ cảnh từ trong không gian nhiều chiều.",
+          "socratic_question": "Liệu bạn có thể nghĩ về cách mà nghĩa của từ có thể thay đổi dựa trên ngữ cảnh không?",
+          "conflicts_with": [
+            "NLP cơ bản",
+            "Phân tích ngữ nghĩa"
+          ],
+          "signals": [
+            "Sự phức tạp của nghĩa từ",
+            "Vấn đề về ngữ cảnh trong embeddings"
+          ]
         },
         {
-          "id": "M-SCOPE-2",
-          "claim": "Pain point nào cũng nên được ưu tiên như nhau.",
-          "signals": ["pain point nào cũng ưu tiên", "mọi vấn đề đều quan trọng như nhau"],
-          "explanation": "Các pain point cần được so sánh theo impact và effort để chọn phạm vi khả thi.",
-          "conflicts_with": ["K3"]
+          "id": "C2",
+          "claim": "Word2Vec là cách duy nhất để tạo ra vector nhúng.",
+          "explanation": "Word2Vec chỉ là một trong nhiều mô hình, có nhiều phương pháp khác như GloVe và FastText.",
+          "socratic_question": "Bạn có biết rằng có nhiều cách khác nhau để học embeddings không?",
+          "conflicts_with": [
+            "Định nghĩa vector nhúng",
+            "Sự đa dạng trong mô hình học máy"
+          ],
+          "signals": [
+            "Nhận thức về các mô hình khác",
+            "Mô hình học sâu và ngữ nghĩa"
+          ]
         }
       ],
       "sources": [
-        {"id": "T01-017", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-017", "paraphrase": "Tư duy product bắt đầu bằng việc xác định bài toán đáng làm và viết nó rõ ràng."},
-        {"id": "T01-071", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-071", "paraphrase": "Pha khám phá dùng quan sát, phỏng vấn, khảo sát và log hành vi để mở rộng insight."},
-        {"id": "T01-077", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-077", "paraphrase": "Pha hội tụ gom nhóm và dùng Five Whys để tìm nguyên nhân gốc."},
-        {"id": "T01-074", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-074", "paraphrase": "Ma trận tác động–nỗ lực giúp khoanh vùng việc đáng làm trước."},
-        {"id": "T01-078", "type": "transcript", "file": "transcript-01-clean.md", "locator": "T01-078", "paraphrase": "Impact là lợi ích tạo ra; effort là người, thời gian và chi phí cần bỏ ra."},
-        {"id": "T02-013", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-013", "paraphrase": "Có thể chia nhỏ cả một dự án lên ma trận để tìm quick win đầu tiên."},
-        {"id": "T02-015", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-015", "paraphrase": "Khung phát biểu vấn đề gồm đối tượng, quy trình, nút thắt, tác động và thành công."},
-        {"id": "T02-018", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-018", "paraphrase": "Định lượng giờ công, workload hoặc tiền giúp đánh giá tác động của giải pháp."}
-      ]
+        {
+          "id": "SRC-005-002",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2) (1).pptx",
+          "locator": "slide 5, đối tượng 2",
+          "paraphrase": "Why dense vectors? Short vectors may be easier to use as features in machine learning (fewer weights to tune) Dense vectors may generalize better than explicit counts Dense vectors may do better at capturing synonymy: car and automobile are",
+          "quote": "Why dense vectors? Short vectors may be easier to use as features in machine learning (fewer weights to tune) Dense vectors may generalize better than explicit counts Dense vectors may do better at capturing synonymy: car and automobile are synonyms; but are distinct dimensions a word with car as a neighbor and a word with automobile as a neighbor should be "
+        },
+        {
+          "id": "SRC-006-004",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2) (1).pptx",
+          "locator": "slide 6, đối tượng 4",
+          "paraphrase": "I want a glass of orange ______.",
+          "quote": "I want a glass of orange ______."
+        },
+        {
+          "id": "SRC-015-002",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2) (1).pptx",
+          "locator": "slide 15, đối tượng 2",
+          "paraphrase": "Popular embedding method Very fast to train Code available on the web Idea: predict rather than count Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS)",
+          "quote": "Popular embedding method Very fast to train Code available on the web Idea: predict rather than count Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS)"
+        },
+        {
+          "id": "SRC-048-002",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2) (1).pptx",
+          "locator": "slide 48, đối tượng 2",
+          "paraphrase": "Ask “Paris : France :: Tokyo : x” x = Japan Ask “father : doctor :: mother : x” x = nurse Ask “man : computer programmer :: woman : x” x = homemaker",
+          "quote": "Ask “Paris : France :: Tokyo : x” x = Japan Ask “father : doctor :: mother : x” x = nurse Ask “man : computer programmer :: woman : x” x = homemaker"
+        }
+      ],
+      "transfer_point_ids": [
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "mastery_criteria": {
+        "required_point_ids": [
+          "P1",
+          "P2",
+          "P3",
+          "P4"
+        ],
+        "require_no_misconceptions": true,
+        "require_transfer_example": true
+      }
     },
     {
-      "id": "metrics-and-automation",
-      "track": "AI Product",
-      "title": "Metric và mức tự động hóa",
-      "description": "Chọn metric phản ánh giá trị và tăng automation theo mức rủi ro.",
-      "greeting": "Bạn hãy dạy mình cách chọn metric đúng và quyết định phần nào nên để AI tự động, phần nào vẫn cần con người.",
-      "task": "Giải thích cách đo giá trị sản phẩm và chọn mức automation phù hợp với hậu quả khi sai.",
-      "scope_terms": ["metric", "chỉ số", "north star", "đo lường", "automation", "augmentation", "tự động", "con người", "rủi ro", "hậu quả"],
-      "starter_prompts": [
-        "Metric sử dụng có khác metric giá trị không?",
-        "North Star Metric liên quan gì tới chỉ số trung gian?",
-        "Khi nào nên augmentation thay vì automation?"
+      "id": "day-3-lecture-4",
+      "track": "Day 3",
+      "title": "Day 3 · Lecture 4. Vector Semantics and Embedding (part 2)",
+      "description": "Ôn tập từ file Lecture 4. Vector Semantics and Embedding (part 2).pptx.",
+      "greeting": "Chào mừng đến với bài học về Vector Semantics và Embedding!",
+      "task": "Giải thích các khái niệm và ứng dụng của vector nhúng, trình bày mô hình Word2Vec, và áp dụng vector nhúng trong các bài toán NLP.",
+      "scope_terms": [
+        "Vector Semantics",
+        "Vector Embeddings",
+        "Word2Vec"
       ],
+      "starter_prompts": [
+        "Hãy giải thích vector nhúng là gì?",
+        "Mô hình Skip-gram hoạt động như thế nào?",
+        "Tại sao vector nhúng lại quan trọng trong NLP?"
+      ],
+      "transfer_question": "Làm thế nào chúng ta có thể sử dụng vector nhúng để cải thiện khả năng hiểu ngôn ngữ của máy tính?",
       "points": [
-        {"id": "K1", "label": "Đo outcome, không chỉ activity", "weight": 25, "ground_truth": "Số user hay thời gian sử dụng chỉ là proxy; metric cuối cần phản ánh giá trị thật mà sản phẩm tạo ra.", "signals": ["outcome", "giá trị cuối", "hiệu quả học tập", "không chỉ số user", "chỉ số trung gian", "proxy"], "question": "Metric nào chứng minh người dùng thực sự nhận được giá trị, thay vì chỉ cho thấy họ đã mở sản phẩm?", "recovery": "Phân biệt hành vi sử dụng với kết quả cuối cùng người dùng muốn đạt.", "source_ids": ["T02-019", "T02-024"]},
-        {"id": "K2", "label": "North Star và chuỗi giả thuyết", "weight": 25, "ground_truth": "North Star Metric được nối với các chỉ số dẫn dắt qua một chuỗi giả thuyết cần kiểm chứng bằng dữ liệu.", "signals": ["north star", "kim chỉ nam", "chỉ số dẫn dắt", "giả thuyết", "assumption", "dữ liệu kiểm chứng"], "question": "Bạn sẽ nối các chỉ số ngắn hạn với North Star Metric bằng giả thuyết nào?", "recovery": "Viết một chuỗi: hành vi tăng → kết quả trung gian tăng → giá trị cuối tăng, rồi nêu cách kiểm chứng.", "source_ids": ["T02-025"]},
-        {"id": "K3", "label": "Đi từ augmentation lên automation", "weight": 25, "ground_truth": "Nên bắt đầu với AI hỗ trợ có người giám sát rồi tăng dần tự động hóa khi đã có bằng chứng vận hành.", "signals": ["augmentation", "con người giám sát", "hỗ trợ con người", "tăng dần automation", "tự động hóa từng bước"], "question": "Vì sao nên bắt đầu bằng AI hỗ trợ con người thay vì tự động hóa toàn bộ ngay?", "recovery": "Hãy tưởng tượng quy trình 10 bước và chỉ giao hai bước ít rủi ro cho AI trước.", "source_ids": ["T02-032", "T02-033"]},
-        {"id": "K4", "label": "Hậu quả quyết định quyền tự động", "weight": 25, "ground_truth": "Công việc có hậu quả lớn khi sai cần giữ gần phía augmentation, có phê duyệt và giới hạn quyền hành động.", "signals": ["hậu quả khi sai", "rủi ro cao", "người phê duyệt", "human in the loop", "giới hạn quyền", "không tự động hoàn toàn"], "question": "Nếu AI sai, hậu quả nào khiến bạn bắt buộc phải giữ bước phê duyệt của con người?", "recovery": "Đánh giá cả xác suất sai và mức thiệt hại trước khi cấp quyền hành động.", "source_ids": ["T02-034", "T03-081"]}
+        {
+          "id": "P1",
+          "label": "Vector Semantics",
+          "weight": 25,
+          "ground_truth": "\"I want a glass of orange ______.\"",
+          "sub_concepts": [
+            "Definition of Vector Semantics"
+          ],
+          "accepted_signals": [
+            "Khái niệm về nghĩa từ",
+            "Mối liên hệ giữa nghĩa và vector"
+          ],
+          "signals": [
+            "Định nghĩa nghĩa từ",
+            "Sự quan trọng của vector trong NLP"
+          ],
+          "question": "Vector semantics cho chúng ta hiểu nghĩa của từ như thế nào?",
+          "recovery": "Hãy xem xét ví dụ cụ thể để hiểu rõ hơn về cách vector đại diện cho nghĩa.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-006-004",
+              "quote": "I want a glass of orange ______."
+            }
+          ],
+          "source_ids": [
+            "SRC-006-004"
+          ],
+          "required": true
+        },
+        {
+          "id": "P2",
+          "label": "Vector Embeddings",
+          "weight": 25,
+          "ground_truth": "\"Dense vectors may generalize better than explicit counts.\"",
+          "sub_concepts": [
+            "Vector Properties"
+          ],
+          "accepted_signals": [
+            "Ý nghĩa của vector nhúng",
+            "Tính chất của dense vectors"
+          ],
+          "signals": [
+            "Sự khác biệt giữa vector thưa và vector dày",
+            "Lợi thế của dense vectors"
+          ],
+          "question": "Điểm mạnh của vector nhúng so với các phương pháp khác là gì?",
+          "recovery": "Hãy đưa ra ví dụ minh họa về cách mà dense vectors hoạt động tốt hơn trong một số tình huống.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-005-002",
+              "quote": "Why dense vectors? Short vectors may be easier to use as features in machine learning (fewer weights to tune) Dense vectors may generalize better than explicit counts Dense vectors may do better at capturing synonymy: car and automobile are synonyms; but are distinct dimensions a"
+            }
+          ],
+          "source_ids": [
+            "SRC-005-002"
+          ],
+          "required": true
+        },
+        {
+          "id": "P3",
+          "label": "Word2Vec and SGNS",
+          "weight": 25,
+          "ground_truth": "\"Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS).\"",
+          "sub_concepts": [
+            "Skip-gram model",
+            "Loss Function in SGNS"
+          ],
+          "accepted_signals": [
+            "Cách thức hoạt động của Word2Vec",
+            "Giới thiệu mô hình Skip-gram"
+          ],
+          "signals": [
+            "Lợi ích của SGNS trong việc tạo ra vector nhúng",
+            "Mục tiêu của mô hình Skip-gram"
+          ],
+          "question": "Skip-gram là gì và tại sao nó lại quan trọng trong việc huấn luyện vector nhúng?",
+          "recovery": "Bạn có thể nêu rõ cách mà tình huống nhất định ảnh hưởng đến kết quả của mô hình này.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-015-002",
+              "quote": "Popular embedding method Very fast to train Code available on the web Idea: predict rather than count Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS)"
+            }
+          ],
+          "source_ids": [
+            "SRC-015-002"
+          ],
+          "required": true
+        },
+        {
+          "id": "P4",
+          "label": "Cultural Bias in Embeddings",
+          "weight": 25,
+          "ground_truth": "\"Ask 'father : doctor :: mother : x' x = nurse.\"",
+          "sub_concepts": [
+            "Measuring Cultural Bias"
+          ],
+          "accepted_signals": [
+            "Nhận biết phần nào của văn hóa được phản ánh trong embeddings",
+            "Tác động của bias đến kết quả huấn luyện"
+          ],
+          "signals": [
+            "Phân tích bias trong model embeddings",
+            "Cách đánh giá sự thiên lệch văn hóa"
+          ],
+          "question": "Cultural bias trong embeddings ảnh hưởng như thế nào đến kết quả xử lý ngôn ngữ?",
+          "recovery": "Hãy xem xét cách các_embedding có thể tạo ra những thiên lệch trong một số ngữ cảnh.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-048-002",
+              "quote": "Ask “Paris : France :: Tokyo : x” x = Japan Ask “father : doctor :: mother : x” x = nurse Ask “man : computer programmer :: woman : x” x = homemaker"
+            }
+          ],
+          "source_ids": [
+            "SRC-048-002"
+          ],
+          "required": true
+        }
       ],
       "misconceptions": [
         {
-          "id": "M-METRIC-1",
-          "claim": "Càng nhiều lượt dùng thì sản phẩm chắc chắn càng có giá trị.",
-          "signals": ["nhiều lượt dùng là chắc chắn có giá trị", "nhiều user nghĩa là sản phẩm thành công"],
-          "explanation": "Usage chỉ là proxy; metric cuối phải phản ánh outcome hoặc giá trị thật người dùng nhận được.",
-          "conflicts_with": ["K1", "K2"]
+          "id": "C1",
+          "claim": "Vector nhúng chỉ là một dạng mã hóa đơn giản của từ.",
+          "explanation": "Vector nhúng không chỉ là mã hóa mà còn phản ánh nghĩa và ngữ cảnh từ trong không gian nhiều chiều.",
+          "socratic_question": "Liệu bạn có thể nghĩ về cách mà nghĩa của từ có thể thay đổi dựa trên ngữ cảnh không?",
+          "conflicts_with": [
+            "NLP cơ bản",
+            "Phân tích ngữ nghĩa"
+          ],
+          "signals": [
+            "Sự phức tạp của nghĩa từ",
+            "Vấn đề về ngữ cảnh trong embeddings"
+          ]
         },
         {
-          "id": "M-METRIC-2",
-          "claim": "Tự động hóa càng nhiều luôn càng tốt.",
-          "signals": ["tự động hóa càng nhiều càng tốt", "automation toàn bộ luôn tốt hơn"],
-          "explanation": "Mức tự động hóa phải phụ thuộc hậu quả khi sai và bằng chứng vận hành, không phải lúc nào cao hơn cũng tốt hơn.",
-          "conflicts_with": ["K3", "K4"]
+          "id": "C2",
+          "claim": "Word2Vec là cách duy nhất để tạo ra vector nhúng.",
+          "explanation": "Word2Vec chỉ là một trong nhiều mô hình, có nhiều phương pháp khác như GloVe và FastText.",
+          "socratic_question": "Bạn có biết rằng có nhiều cách khác nhau để học embeddings không?",
+          "conflicts_with": [
+            "Định nghĩa vector nhúng",
+            "Sự đa dạng trong mô hình học máy"
+          ],
+          "signals": [
+            "Nhận thức về các mô hình khác",
+            "Mô hình học sâu và ngữ nghĩa"
+          ]
         }
       ],
       "sources": [
-        {"id": "T02-019", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-019", "paraphrase": "Cần chọn chỉ số cho biết sản phẩm tạo hiệu quả, không chỉ đếm lượt vào."},
-        {"id": "T02-024", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-024", "paraphrase": "Sản phẩm học tập nên đo kết quả học; usage là chỉ số trung gian."},
-        {"id": "T02-025", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-025", "paraphrase": "North Star được nối với chỉ số dẫn dắt bằng giả thuyết và dữ liệu."},
-        {"id": "T02-032", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-032", "paraphrase": "Automation và augmentation là một phổ về mức con người tham gia."},
-        {"id": "T02-033", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-033", "paraphrase": "Bắt đầu từ augmentation và tăng automation từng bước giúp giữ kiểm soát."},
-        {"id": "T02-034", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-034", "paraphrase": "Tác vụ có hậu quả nghiêm trọng khi sai nên ở gần phía augmentation."},
-        {"id": "T03-081", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-081", "paraphrase": "Kế hoạch cần xét pain point, workflow, cost, hậu quả khi AI sai và người phê duyệt."}
-      ]
+        {
+          "id": "SRC-005-002",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2).pptx",
+          "locator": "slide 5, đối tượng 2",
+          "paraphrase": "Why dense vectors? Short vectors may be easier to use as features in machine learning (fewer weights to tune) Dense vectors may generalize better than explicit counts Dense vectors may do better at capturing synonymy: car and automobile are",
+          "quote": "Why dense vectors? Short vectors may be easier to use as features in machine learning (fewer weights to tune) Dense vectors may generalize better than explicit counts Dense vectors may do better at capturing synonymy: car and automobile are synonyms; but are distinct dimensions a word with car as a neighbor and a word with automobile as a neighbor should be "
+        },
+        {
+          "id": "SRC-006-004",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2).pptx",
+          "locator": "slide 6, đối tượng 4",
+          "paraphrase": "I want a glass of orange ______.",
+          "quote": "I want a glass of orange ______."
+        },
+        {
+          "id": "SRC-015-002",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2).pptx",
+          "locator": "slide 15, đối tượng 2",
+          "paraphrase": "Popular embedding method Very fast to train Code available on the web Idea: predict rather than count Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS)",
+          "quote": "Popular embedding method Very fast to train Code available on the web Idea: predict rather than count Word2vec provides various options. We'll do: skip-gram with negative sampling (SGNS)"
+        },
+        {
+          "id": "SRC-048-002",
+          "type": "pptx",
+          "file": "Lecture 4. Vector Semantics and Embedding (part 2).pptx",
+          "locator": "slide 48, đối tượng 2",
+          "paraphrase": "Ask “Paris : France :: Tokyo : x” x = Japan Ask “father : doctor :: mother : x” x = nurse Ask “man : computer programmer :: woman : x” x = homemaker",
+          "quote": "Ask “Paris : France :: Tokyo : x” x = Japan Ask “father : doctor :: mother : x” x = nurse Ask “man : computer programmer :: woman : x” x = homemaker"
+        }
+      ],
+      "transfer_point_ids": [
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "mastery_criteria": {
+        "required_point_ids": [
+          "P1",
+          "P2",
+          "P3",
+          "P4"
+        ],
+        "require_no_misconceptions": true,
+        "require_transfer_example": true
+      }
     },
     {
-      "id": "ai-workflow-architecture",
-      "track": "AI Engineering",
-      "title": "Chọn kiến trúc AI vừa đủ",
-      "description": "Phân rã rule, workflow, LLM và agent theo độ bất định của bài toán.",
-      "greeting": "Hãy lấy một hệ thống AI cụ thể và dạy mình cách chọn kiến trúc đơn giản nhất nhưng vẫn giải được bài toán.",
-      "task": "Giải thích khi nào dùng rule, workflow, LLM, RAG hay agent và cách giữ phần deterministic bên ngoài model.",
-      "scope_terms": ["rule", "workflow", "agent", "llm", "rag", "deterministic", "routing", "parallel", "chaining", "tool", "kiến trúc"],
-      "starter_prompts": [
-        "Khi nào không cần dùng AI?",
-        "Workflow khác agent tự trị ở đâu?",
-        "Phần nào nên tách khỏi LLM để bảo đảm đúng?"
+      "id": "day-4-lecture-5-2",
+      "track": "Day 4",
+      "title": "Day 4 · Lecture 5.2. POSNER_intro_May_6_2021",
+      "description": "Ôn tập từ file Lecture 5.2. POSNER_intro_May_6_2021.pptx.",
+      "greeting": "Chào mừng các bạn đến với bài học về Gán nhãn chuỗi! Hôm nay, chúng ta sẽ nghiên cứu các khái niệm cơ bản.",
+      "task": "Hãy tìm hiểu các khái niệm liên quan đến việc gán nhãn phần của lời và nhận diện thực thể.",
+      "scope_terms": [
+        "Gán nhãn chuỗi",
+        "Nhận diện thực thể",
+        "Gán nhãn phần của lời",
+        "Phân loại từ",
+        "NLP"
       ],
+      "starter_prompts": [
+        "Bạn có thể giải thích Gán nhãn phần của lời là gì không?",
+        "Sự khác biệt giữa từ lớp mở và lớp đóng là gì?",
+        "Gán nhãn phần của lời quan trọng như thế nào trong NLP?",
+        "Nhận diện thực thể là gì và nó được sử dụng như thế nào trong NLP?",
+        "Bạn nghĩ những thách thức nào trong việc gán nhãn phần của lời?"
+      ],
+      "transfer_question": "Khi nào và tại sao chúng ta nên sử dụng Gán nhãn chuỗi trong xử lý ngôn ngữ tự nhiên?",
       "points": [
-        {"id": "K1", "label": "Bắt đầu từ rule đơn giản", "weight": 25, "ground_truth": "Nếu logic có thể viết thành quy tắc rõ ràng thì code deterministic thường rẻ, dễ kiểm soát và đáng tin hơn AI.", "signals": ["rule based", "quy tắc rõ ràng", "không cần ai", "đơn giản trước", "if else", "deterministic"], "question": "Phần nào của bài toán có thể viết thành rule rõ ràng mà không cần gọi model?", "recovery": "Tìm các quyết định có input, điều kiện và output xác định được trước.", "source_ids": ["T02-036", "T03-074"]},
-        {"id": "K2", "label": "Workflow trước agent phức tạp", "weight": 25, "ground_truth": "Chaining, routing và parallel workflow giải được nhiều bài toán với khả năng quan sát và debug tốt hơn agent tự trị.", "signals": ["chaining", "routing", "parallel", "workflow", "chia thành các bước", "phân nhánh", "dễ debug"], "question": "Bạn có thể chia bài toán thành chuỗi, nhánh hoặc các bước song song nào trước khi cần agent tự trị?", "recovery": "Vẽ input → các bước → gate kiểm tra → output; chỉ thêm agent nếu workflow cố định chạm trần.", "source_ids": ["T02-037", "T02-039"]},
-        {"id": "K3", "label": "Tách deterministic khỏi probabilistic", "weight": 25, "ground_truth": "Tính toán, ràng buộc và kiểm tra chắc chắn nên nằm trong code; LLM xử lý phần ngôn ngữ hoặc suy luận mềm.", "signals": ["tách deterministic", "phần chắc chắn", "công thức trong code", "llm xử lý ngôn ngữ", "probabilistic", "kiểm tra bằng code"], "question": "Trong giải pháp của bạn, đâu là phần phải đúng tuyệt đối và nên tách khỏi đầu ra xác suất của LLM?", "recovery": "Đưa công thức, validation và quyền quyết định cứng vào code; để model xử lý phần mơ hồ.", "source_ids": ["T03-074", "T03-077"]},
-        {"id": "K4", "label": "Bổ sung knowledge và công cụ", "weight": 25, "ground_truth": "RAG cung cấp tri thức riêng, tools thực hiện hành động; mỗi thành phần cần giới hạn và bước kiểm tra phù hợp.", "signals": ["rag", "dữ liệu nội bộ", "retrieval", "tool calling", "công cụ", "nguồn tham chiếu", "kiểm tra đầu ra"], "question": "Model còn thiếu tri thức hay năng lực hành động nào khiến bạn phải thêm RAG hoặc tool?", "recovery": "RAG dùng để đưa tri thức ngoài model vào context; tool dùng để truy vấn hoặc hành động có kiểm soát.", "source_ids": ["T03-036", "T03-081"]}
+        {
+          "id": "P1",
+          "label": "Gán nhãn phần của lời",
+          "weight": 20,
+          "ground_truth": "\"Assigning a part-of-speech to each word in a text. Words often have more than one POS.\"",
+          "sub_concepts": [
+            "Định nghĩa về phần của lời",
+            "Sự khác nhau giữa từ lớp mở và lớp đóng",
+            "Thách thức trong gán nhãn phần của lời",
+            "Vai trò của gán nhãn phần của lời trong NLP"
+          ],
+          "accepted_signals": [
+            "Khái niệm gán nhãn phần của lời đã được hiểu rõ",
+            "Có thể phân biệt giữa các loại từ",
+            "Nhận biết vai trò của phần gán nhãn trong NLP"
+          ],
+          "signals": [
+            "Gán nhãn từ có rất nhiều loại và mỗi loại có thể có nhiều cách giải thích.",
+            "Các từ có thể được phân loại vào nhiều danh mục khác nhau."
+          ],
+          "question": "Gán nhãn phần của lời có ý nghĩa như thế nào trong việc phân tích ngữ nghĩa?",
+          "recovery": "Bạn có thể nhìn vào những ví dụ cụ thể trong văn bản để nhận thấy sự cần thiết của gán nhãn này.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-005-002",
+              "quote": "Assigning a part-of-speech to each word in a text. Words often have more than one POS."
+            }
+          ],
+          "source_ids": [
+            "SRC-005-002"
+          ],
+          "required": true
+        },
+        {
+          "id": "P2",
+          "label": "Sự khác nhau giữa từ lớp mở và lớp đóng",
+          "weight": 20,
+          "ground_truth": "\"Closed class words Relatively fixed membership Usually function words: short, frequent words... Open class words Usually content words: Nouns, Verbs, Adjectives, Adverbs.\"",
+          "sub_concepts": [
+            "Định nghĩa về phần của lời",
+            "Thách thức trong gán nhãn phần của lời",
+            "Vai trò của gán nhãn phần của lời trong NLP"
+          ],
+          "accepted_signals": [
+            "Có thể phân biệt từ lớp mở và lớp đóng",
+            "Biết vai trò của loại từ trong câu"
+          ],
+          "signals": [
+            "Từ lớp mở có thể thay đổi hơn so với từ lớp đóng.",
+            "Các ví dụ về từ lớp mở như danh từ, động từ, tính từ."
+          ],
+          "question": "Tại sao việc phân loại từ vào lớp mở và lớp đóng lại quan trọng trong quy trình gán nhãn?",
+          "recovery": "Hãy xem xét các ví dụ cụ thể để phân tích sâu hơn.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-003-002",
+              "quote": "Closed class words Relatively fixed membership Usually function words: short, frequent words with grammatical function determiners: a, an, the pronouns: she, he, I prepositions: on, under, over, near, by, … Open class words Usually content words: Nouns, Verbs, Adjectives, Adverbs"
+            }
+          ],
+          "source_ids": [
+            "SRC-003-002"
+          ],
+          "required": true
+        },
+        {
+          "id": "P3",
+          "label": "Thách thức trong gán nhãn phần của lời",
+          "weight": 20,
+          "ground_truth": "\"Roughly 15% of word types are ambiguous Hence 85% of word types are unambiguous... those 15% tend to be very common.\"",
+          "sub_concepts": [
+            "Định nghĩa về phần của lời",
+            "Sự khác nhau giữa từ lớp mở và lớp đóng",
+            "Vai trò của gán nhãn phần của lời trong NLP"
+          ],
+          "accepted_signals": [
+            "Biết về sự mơ hồ trong từ ngữ",
+            "Nhận diện các từ khó gán nhãn"
+          ],
+          "signals": [
+            "Cần xử lý các từ thường gặp có thể thuộc nhiều danh mục.",
+            "Định hướng rõ hơn trong việc chỉ định loại từ."
+          ],
+          "question": "Cách giải quyết nào có thể áp dụng để giảm thiểu sự mơ hồ khi gán nhãn?",
+          "recovery": "Có thể thử nghiệm với các mô hình và công cụ khác nhau để cải thiện độ chính xác.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-010-002",
+              "quote": "Roughly 15% of word types are ambiguous Hence 85% of word types are unambiguous Janet is always PROPN, hesitantly is always ADV But those 15% tend to be very common. So ~60% of word tokens are ambiguous E.g., back earnings growth took a back/ADJ seat a small building in the back/"
+            }
+          ],
+          "source_ids": [
+            "SRC-010-002"
+          ],
+          "required": true
+        },
+        {
+          "id": "P4",
+          "label": "Vai trò của gán nhãn phần của lời trong NLP",
+          "weight": 20,
+          "ground_truth": "\"Can be useful for other NLP tasks Parsing: POS tagging can improve syntactic parsing.\"",
+          "sub_concepts": [
+            "Định nghĩa về phần của lời",
+            "Sự khác nhau giữa từ lớp mở và lớp đóng",
+            "Thách thức trong gán nhãn phần của lời"
+          ],
+          "accepted_signals": [
+            "Nhận biết sự liên hệ giữa các tác vụ NLP và gán nhãn phần của lời",
+            "Hiểu rõ chức năng của gán nhãn trong phân tích cú pháp"
+          ],
+          "signals": [
+            "Gán nhãn phần của lời đóng vai trò quan trọng trong nhiều ứng dụng NLP khác nhau.",
+            "Nó cũng giúp cải thiện độ chính xác của các công cụ phân tích ngữ nghĩa."
+          ],
+          "question": "Làm thế nào gán nhãn phần của lời hỗ trợ cho các nhiệm vụ xử lý ngôn ngữ khác?",
+          "recovery": "Hãy nghiên cứu các ví dụ thực tế để thấy sự liên quan này.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-009-002",
+              "quote": "Can be useful for other NLP tasks Parsing: POS tagging can improve syntactic parsing MT: reordering of adjectives and nouns (say from Spanish to English) Sentiment or affective tasks: may want to distinguish adjectives or other POS Text-to-speech (how do we pronounce “lead” or \"o"
+            }
+          ],
+          "source_ids": [
+            "SRC-009-002"
+          ],
+          "required": true
+        },
+        {
+          "id": "P5",
+          "label": "Định nghĩa về Nhận diện Thực thể",
+          "weight": 20,
+          "ground_truth": "\"Named entity, in its core usage, means anything that can be referred to with a proper name.\"",
+          "sub_concepts": [
+            "Định nghĩa về thực thể được nhận diện"
+          ],
+          "accepted_signals": [
+            "Có thể giải thích định nghĩa về thực thể",
+            "Nhận biết tầm quan trọng của NER trong NLP"
+          ],
+          "signals": [
+            "Thực thể có thể là tên riêng của người, địa điểm hoặc tổ chức.",
+            "Khả năng nhận diện thực thể có ảnh hưởng đến chất lượng thông tin trích xuất."
+          ],
+          "question": "Tại sao việc nhận diện các thực thể lại quan trọng trong phân tích dữ liệu văn bản?",
+          "recovery": "Hãy xem xét các chuyển đổi thực tế từ văn bản sang dữ liệu có cấu trúc.",
+          "support_evidence": [
+            {
+              "source_id": "SRC-016-002",
+              "quote": "Named entity, in its core usage, means anything that can be referred to with a proper name."
+            }
+          ],
+          "source_ids": [
+            "SRC-016-002"
+          ],
+          "required": true
+        }
       ],
       "misconceptions": [
         {
-          "id": "M-ARCH-1",
-          "claim": "Agent luôn tốt hơn workflow hoặc rule.",
-          "signals": ["agent luôn tốt hơn workflow", "bài toán nào cũng nên dùng agent"],
-          "explanation": "Rule hoặc workflow thường dễ kiểm soát hơn; chỉ nên thêm agent khi độ bất định thực sự cần nó.",
-          "conflicts_with": ["K1", "K2"]
-        },
-        {
-          "id": "M-ARCH-2",
-          "claim": "Có thể giao cả công thức và validation cho LLM.",
-          "signals": ["giao toàn bộ validation cho LLM", "công thức để LLM tự tính luôn"],
-          "explanation": "Công thức, validation và ràng buộc phải đúng nên được giữ trong code deterministic.",
-          "conflicts_with": ["K3"]
+          "id": "C1",
+          "claim": "Tất cả các từ đều thuộc về một loại duy nhất trong gán nhãn phần của lời.",
+          "explanation": "Các từ có thể có nhiều loại khác nhau tùy thuộc vào ngữ cảnh.",
+          "socratic_question": "Làm thế nào một từ có thể trở thành nhiều loại trong ngữ cảnh khác nhau?",
+          "conflicts_with": [
+            "Thực tế là cùng một từ có thể được gán nhiều loại khác nhau.",
+            "Thực thể có thể thay đổi tùy theo ngữ cảnh."
+          ],
+          "signals": [
+            "Gán nhãn không thể cố định cho một từ duy nhất mà cần linh hoạt."
+          ]
         }
       ],
       "sources": [
-        {"id": "T02-036", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-036", "paraphrase": "Logic viết thành rule rõ ràng có thể chạy bằng code mà không cần AI."},
-        {"id": "T02-037", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-037", "paraphrase": "Workflow tuần tự, phân nhánh và song song đáp ứng nhiều nhu cầu cơ bản."},
-        {"id": "T02-039", "type": "transcript", "file": "transcript-02-clean.md", "locator": "T02-039", "paraphrase": "Agent phức tạp khó kiểm soát và debug; tiêu chí đánh giá cần được làm giàu dần."},
-        {"id": "T03-074", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-074", "paraphrase": "Công thức và quan hệ biến số xác định nên được xử lý bằng logic deterministic."},
-        {"id": "T03-077", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-077", "paraphrase": "Bài toán phức tạp vẫn nên tìm các đoạn chắc chắn thay vì giao toàn bộ cho model xác suất."},
-        {"id": "T03-036", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-036", "paraphrase": "Chatbot tri thức nội bộ cần retrieval để đưa tài liệu riêng vào context."},
-        {"id": "T03-081", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-081", "paraphrase": "Kiến trúc phải gắn với workflow, cost, hậu quả khi sai và người phê duyệt."}
-      ]
-    },
-    {
-      "id": "production-scope-and-safety",
-      "track": "AI Engineering",
-      "title": "Scope và an toàn production",
-      "description": "Xác định điều kiện vận hành, fallback, guardrail và vòng lặp cải tiến.",
-      "greeting": "Hãy dạy mình cách biến một demo AI thành hệ thống có phạm vi, guardrail và cách xử lý khi thất bại.",
-      "task": "Trình bày cách định nghĩa scope vận hành, kiểm soát quyền và học từ dữ liệu production.",
-      "scope_terms": ["production", "scope", "odd", "constraint", "fallback", "backup", "guardrail", "bảo mật", "secret", "feedback", "failure", "rủi ro"],
-      "starter_prompts": [
-        "ODD hay scope vận hành dùng để làm gì?",
-        "Hệ thống cần xử lý lỗi và fallback thế nào?",
-        "Agent có quyền hành động cần guardrail gì?"
-      ],
-      "points": [
-        {"id": "K1", "label": "Định nghĩa điều kiện vận hành", "weight": 25, "ground_truth": "Phải nêu rõ hệ thống hoạt động tốt trong điều kiện nào, giới hạn nào và độ sai lệch chấp nhận được.", "signals": ["operational design domain", "odd", "điều kiện vận hành", "giới hạn", "constraint", "độ lệch chấp nhận", "scope hẹp"], "question": "Hệ thống của bạn được cam kết hoạt động trong những điều kiện cụ thể nào và ngoài điều kiện đó thì sao?", "recovery": "Liệt kê input hợp lệ, môi trường, giới hạn và ngưỡng chất lượng chấp nhận được.", "source_ids": ["T03-105", "T03-107", "T03-109"]},
-        {"id": "K2", "label": "Failure mode và fallback", "weight": 25, "ground_truth": "Liệt kê failure mode, phát hiện lỗi và thiết kế fallback/backup an toàn thay vì giả định hệ thống luôn chạy.", "signals": ["failure mode", "kịch bản lỗi", "fallback", "backup plan", "phát hiện lỗi", "xử lý khi sai", "graceful"], "question": "Khi thành phần quan trọng hỏng hoặc model không chắc chắn, hệ thống phát hiện và chuyển sang phương án nào?", "recovery": "Chọn một lỗi cụ thể, nêu tín hiệu phát hiện, hành động an toàn và người được thông báo.", "source_ids": ["T03-106"]},
-        {"id": "K3", "label": "Quyền hạn và guardrail", "weight": 25, "ground_truth": "Agent có quyền gửi, công bố hoặc giao dịch cần kiểm tra đầu ra, giới hạn quyền và phê duyệt cho hành động rủi ro.", "signals": ["guardrail", "giới hạn quyền", "secret", "rò rỉ", "leak", "phê duyệt", "gửi email", "hành động rủi ro"], "question": "Trước khi agent thực hiện hành động ra thế giới thật, bạn sẽ chặn dữ liệu nhạy cảm và yêu cầu phê duyệt ở đâu?", "recovery": "Xem xét quyền đọc, quyền ghi, dữ liệu bí mật và hành động không thể hoàn tác.", "source_ids": ["T03-090"]},
-        {"id": "K4", "label": "Đo lường và cải tiến liên tục", "weight": 25, "ground_truth": "Production cần metric dừng/đi tiếp, feedback người dùng và quy trình dùng dữ liệu thật để cải thiện có kiểm soát.", "signals": ["metric dừng", "go no go", "feedback người dùng", "continuous learning", "cải tiến liên tục", "dữ liệu production", "đo lường"], "question": "Bạn sẽ dùng metric và feedback production nào để quyết định tiếp tục, dừng hoặc cải tiến hệ thống?", "recovery": "Nêu ngưỡng go/no-go và cách biến feedback thành dữ liệu đánh giá phiên bản sau.", "source_ids": ["T03-120", "T03-121", "T03-122"]}
-      ],
-      "misconceptions": [
         {
-          "id": "M-PROD-1",
-          "claim": "Demo chạy tốt thì có thể đưa thẳng vào production.",
-          "signals": ["demo chạy tốt là đưa thẳng production", "demo tốt thì production chắc chắn tốt"],
-          "explanation": "Production cần scope vận hành, failure mode, fallback, guardrail và metric riêng; demo tốt chưa chứng minh các điều đó.",
-          "conflicts_with": ["K1", "K2", "K3", "K4"]
+          "id": "SRC-003-002",
+          "type": "pptx",
+          "file": "Lecture 5.2. POSNER_intro_May_6_2021.pptx",
+          "locator": "slide 3, đối tượng 2",
+          "paraphrase": "Closed class words Relatively fixed membership Usually function words: short, frequent words with grammatical function determiners: a, an, the pronouns: she, he, I prepositions: on, under, over, near, by, … Open class words Usually content ",
+          "quote": "Closed class words Relatively fixed membership Usually function words: short, frequent words with grammatical function determiners: a, an, the pronouns: she, he, I prepositions: on, under, over, near, by, … Open class words Usually content words: Nouns, Verbs, Adjectives, Adverbs Plus interjections: oh, ouch, uh-huh, yes, hello New nouns and verbs like iPhon"
         },
         {
-          "id": "M-PROD-2",
-          "claim": "Có guardrail thì hệ thống không còn rủi ro.",
-          "signals": ["có guardrail là hết rủi ro", "guardrail bảo đảm an toàn tuyệt đối"],
-          "explanation": "Guardrail giảm và giới hạn rủi ro nhưng vẫn cần phát hiện lỗi, fallback, phê duyệt và giám sát.",
-          "conflicts_with": ["K2", "K3"]
+          "id": "SRC-005-002",
+          "type": "pptx",
+          "file": "Lecture 5.2. POSNER_intro_May_6_2021.pptx",
+          "locator": "slide 5, đối tượng 2",
+          "paraphrase": "Assigning a part-of-speech to each word in a text. Words often have more than one POS. book: VERB: (Book that flight) NOUN: (Hand me that book).",
+          "quote": "Assigning a part-of-speech to each word in a text. Words often have more than one POS. book: VERB: (Book that flight) NOUN: (Hand me that book)."
+        },
+        {
+          "id": "SRC-009-002",
+          "type": "pptx",
+          "file": "Lecture 5.2. POSNER_intro_May_6_2021.pptx",
+          "locator": "slide 9, đối tượng 2",
+          "paraphrase": "Can be useful for other NLP tasks Parsing: POS tagging can improve syntactic parsing MT: reordering of adjectives and nouns (say from Spanish to English) Sentiment or affective tasks: may want to distinguish adjectives or other POS Text-to-",
+          "quote": "Can be useful for other NLP tasks Parsing: POS tagging can improve syntactic parsing MT: reordering of adjectives and nouns (say from Spanish to English) Sentiment or affective tasks: may want to distinguish adjectives or other POS Text-to-speech (how do we pronounce “lead” or \"object\"?) Or linguistic or language-analytic computational tasks Need to control "
+        },
+        {
+          "id": "SRC-010-002",
+          "type": "pptx",
+          "file": "Lecture 5.2. POSNER_intro_May_6_2021.pptx",
+          "locator": "slide 10, đối tượng 2",
+          "paraphrase": "Roughly 15% of word types are ambiguous Hence 85% of word types are unambiguous Janet is always PROPN, hesitantly is always ADV But those 15% tend to be very common. So ~60% of word tokens are ambiguous E.g., back earnings growth took a bac",
+          "quote": "Roughly 15% of word types are ambiguous Hence 85% of word types are unambiguous Janet is always PROPN, hesitantly is always ADV But those 15% tend to be very common. So ~60% of word tokens are ambiguous E.g., back earnings growth took a back/ADJ seat a small building in the back/NOUN a clear majority of senators back/VERB the bill enable the country to buy b"
+        },
+        {
+          "id": "SRC-016-002",
+          "type": "pptx",
+          "file": "Lecture 5.2. POSNER_intro_May_6_2021.pptx",
+          "locator": "slide 16, đối tượng 2",
+          "paraphrase": "Named entity, in its core usage, means anything that can be referred to with a proper name. Most common 4 tags: PER (Person): “Marie Curie” LOC (Location): “New York City” ORG (Organization): “Stanford University” GPE (Geo-Political Entity)",
+          "quote": "Named entity, in its core usage, means anything that can be referred to with a proper name. Most common 4 tags: PER (Person): “Marie Curie” LOC (Location): “New York City” ORG (Organization): “Stanford University” GPE (Geo-Political Entity): \"Boulder, Colorado\" Often multi-word phrases But the term is also extended to things that aren't entities: dates, time"
         }
       ],
-      "sources": [
-        {"id": "T03-105", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-105", "paraphrase": "Hệ thống cần một phạm vi vận hành xác định thay vì cam kết cho mọi tình huống."},
-        {"id": "T03-106", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-106", "paraphrase": "Khi sự cố xảy ra cần phương án dự phòng và cơ chế phát hiện lỗi."},
-        {"id": "T03-107", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-107", "paraphrase": "Scope phải nói rõ điều kiện hoạt động và cảnh báo khi chất lượng giảm."},
-        {"id": "T03-109", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-109", "paraphrase": "Thu hẹp domain giúp tăng độ chính xác và xử lý câu hỏi ngoài phạm vi rõ ràng."},
-        {"id": "T03-090", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-090", "paraphrase": "Agent có quyền hành động cần lớp bảo mật, kiểm tra secret và ràng buộc đầu ra."},
-        {"id": "T03-120", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-120", "paraphrase": "Kế hoạch production cần chứng minh bằng thời gian, công sức, tiền và thao tác đo được."},
-        {"id": "T03-121", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-121", "paraphrase": "Metric giúp xác định dự án nên đi tiếp hay dừng khi rủi ro được làm rõ."},
-        {"id": "T03-122", "type": "transcript", "file": "transcript-03-clean.md", "locator": "T03-122", "paraphrase": "Feedback và dữ liệu thật cần được đưa vào vòng lặp cải tiến sản phẩm."}
-      ]
+      "transfer_point_ids": [
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "mastery_criteria": {
+        "required_point_ids": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5"
+        ],
+        "require_no_misconceptions": true,
+        "require_transfer_example": true
+      }
     }
   ]
 }

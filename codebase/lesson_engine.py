@@ -34,8 +34,6 @@ from platform_runtime import (
     OpenAILessonRouter,
     contains_phrase,
 )
-from turn_policy import classify_turn_intent
-
 D3_LESSON_ID = "why-llm-hallucinates"
 
 
@@ -110,7 +108,7 @@ class GenericOfflineProvider:
     def assess(
         self, *, prompt: str, explanation: str, schema: dict[str, Any], metadata: dict[str, Any]
     ) -> dict[str, Any]:
-        intent = classify_turn_intent(explanation)
+        intent = "teachback_answer"
         out_of_scope = intent in {"out_of_scope", "authority_attack", "change_topic"}
         insufficient = intent == "request_help" or len(explanation.split()) <= 4
         copied = self.knowledge.is_probable_copy(explanation)
@@ -198,6 +196,12 @@ class TeachBackWebEngine:
             lesson["id"]: self._build_lesson_bundle(lesson) for lesson in self.catalog.all()
         }
 
+    def reload_catalog(self, catalog: LessonCatalog) -> None:
+        self.catalog = catalog
+        self._lesson_bundles = {
+            lesson["id"]: self._build_lesson_bundle(lesson) for lesson in self.catalog.all()
+        }
+
     @staticmethod
     def _build_lesson_bundle(lesson: dict[str, Any]) -> dict[str, Any]:
         is_d3 = lesson["id"] == D3_LESSON_ID
@@ -248,11 +252,39 @@ class TeachBackWebEngine:
         )
 
     def create_session(
-        self, lesson_id: str, session_id: str | None = None
+        self, lesson_id: str, session_id: str | None = None, *, provider: str = "offline",
+        model: str | None = None, api_key: str | None = None,
     ) -> dict[str, Any]:
         lesson = self.catalog.get(lesson_id)
-        session = self.store.create_session(lesson, session_id=session_id)
-        return self._decorate_session(session, lesson)
+        provider = provider.strip().lower()
+        if provider not in {"offline", "openai"}:
+            raise ValueError("provider phải là offline hoặc openai")
+        selected_model = (model or os.getenv("OPENAI_MODEL") or DEFAULT_MODEL).strip() if provider == "openai" else None
+        session = self.store.create_session(lesson, session_id=session_id, include_greeting=False)
+        try:
+            if provider == "openai":
+                router = OpenAILessonRouter(
+                    api_key=api_key or os.getenv("OPENAI_API_KEY", ""),
+                    model=selected_model or DEFAULT_MODEL, log_path=self.model_log_path,
+                )
+                opening = router.write_lesson_opening(lesson, "")
+            else:
+                opening = (
+                    f"Chúng ta sẽ cùng ôn “{lesson['title']}”. Bạn cứ trình bày theo cách hiểu "
+                    "của mình, mình sẽ đồng hành để làm rõ từng ý."
+                )
+            self.store.add_message(
+                session["id"], "assistant", opening,
+                {"kind": "opening", "provider": provider, "model": selected_model},
+            )
+            self.store.update_session(
+                session["id"], status="coaching", progress=0, covered_points=[], misconceptions=[],
+                provider=provider, model=selected_model,
+            )
+        except Exception:
+            self.store.delete_session(session["id"])
+            raise
+        return self.get_session(session["id"])  # type: ignore[return-value]
 
     def start_chat(
         self,
@@ -275,6 +307,7 @@ class TeachBackWebEngine:
             if provider == "openai"
             else None
         )
+        router: OpenAILessonRouter | None = None
         if provider == "openai":
             router = OpenAILessonRouter(
                 api_key=api_key or os.getenv("OPENAI_API_KEY", ""),
@@ -285,11 +318,18 @@ class TeachBackWebEngine:
         else:
             route = self._offline_route_lesson(content)
 
-        intent = str(route.get("intent") or classify_turn_intent(content))
+        intent = str(route.get("intent") or ("teachback_answer" if route["matched"] else "out_of_scope"))
         tool_trace = [{"tool": "route_lesson", "input": {"content": content}, "output": route}]
         if not route["matched"]:
-            reply = str(route.get("reply", "")).strip()
-            if not reply:
+            if router is not None:
+                reply = router.respond_to_unmatched_prompt(
+                    self.catalog.all(), content, intent, str(route.get("reason", ""))
+                )
+                tool_trace.append(
+                    {"tool": "write_unmatched_chat_reply", "input": {"intent": intent},
+                     "output": {"generated": True}}
+                )
+            else:
                 if intent == "request_help":
                     reply = (
                         "Không sao. Bạn muốn ôn phần nào trong các bài hiện có—cách LLM hoạt động, "
@@ -323,29 +363,64 @@ class TeachBackWebEngine:
             lesson, title=self._chat_title(content), include_greeting=False
         )
         try:
-            result = self.send_message(
-                session["id"], content, provider=provider, model=selected_model,
-                api_key=api_key, allow_reroute=False,
+            if router is not None:
+                opening = router.write_lesson_opening(lesson, content)
+                tool_trace.append(
+                    {"tool": "write_lesson_opening", "input": {"lesson_id": lesson["id"]},
+                     "output": {"generated": True}}
+                )
+            else:
+                opening = (
+                    f"Chúng ta sẽ cùng ôn “{lesson['title']}”. Bạn cứ trình bày theo cách hiểu "
+                    "của mình, mình sẽ đồng hành để làm rõ từng ý."
+                )
+            self.store.add_message(session["id"], "user", content)
+            assistant_message = self.store.add_message(
+                session["id"], "assistant", opening,
+                {"kind": "opening", "provider": provider, "model": selected_model},
             )
         except Exception:
             self.store.delete_session(session["id"])
             raise
-        result["needs_clarification"] = False
-        result["tool_trace"] = tool_trace + result.get("tool_trace", [])
-        result["session"] = self.get_session(session["id"])
-        return result
+        self.store.update_session(
+            session["id"], status="coaching", progress=0, covered_points=[], misconceptions=[],
+            provider=provider, model=selected_model,
+        )
+        decorated_session = self.get_session(session["id"])
+        return {
+            "session_id": session["id"], "lesson_id": lesson["id"],
+            "session": decorated_session, "routed_lesson": self.catalog.public_lesson(lesson),
+            "needs_clarification": False, "status": "coaching", "intent": "session_setup",
+            "progress": 0, "covered_points": [],
+            "missing_points": [point["id"] for point in lesson["points"]],
+            "misconceptions": [], "diagnosis": {"type": "opening"},
+            "agent_response": opening, "source_cards": [], "citations_valid": True,
+            "provider": provider, "model": selected_model, "message": assistant_message,
+            "tool_trace": tool_trace,
+        }
 
     def get_session(self, session_id: str) -> dict[str, Any] | None:
         session = self.store.get_session(session_id, include_messages=True)
         if session is None:
             return None
-        return self._decorate_session(session, self.catalog.get(session["lesson_id"]))
+        try:
+            lesson = self.catalog.get(session["lesson_id"])
+        except KeyError:
+            # A catalog may be replaced after a session was created.  Keep the
+            # old history in SQLite but do not attempt to render it as a lesson.
+            return None
+        return self._decorate_session(session, lesson)
 
     def list_sessions(self, limit: int = 30) -> list[dict[str, Any]]:
         sessions = self.store.list_sessions(limit)
+        visible_sessions = []
         for session in sessions:
-            session["lesson_title"] = self.catalog.get(session["lesson_id"])["title"]
-        return sessions
+            try:
+                session["lesson_title"] = self.catalog.get(session["lesson_id"])["title"]
+            except KeyError:
+                continue
+            visible_sessions.append(session)
+        return visible_sessions
 
     def clear_history(self) -> int:
         return self.store.clear_sessions()
@@ -389,10 +464,8 @@ class TeachBackWebEngine:
             scored.append((score, lesson["id"]))
         scored.sort(key=lambda item: item[0], reverse=True)
         best_score, lesson_id = scored[0]
-        intent = classify_turn_intent(content)
+        intent = "teachback_answer"
         matched = best_score >= 2
-        if intent == "request_help" and not has_specific_lesson_signal:
-            matched = False
         return {
             # A single generic token overlap is not enough to create a session;
             # require either a specific scope/signal hit or two semantic clues.
@@ -580,7 +653,6 @@ class TeachBackWebEngine:
             if provider == "openai"
             else None
         )
-        intent = classify_turn_intent(content)
         router: OpenAILessonRouter | None = None
         if provider == "openai":
             router = OpenAILessonRouter(
@@ -591,7 +663,7 @@ class TeachBackWebEngine:
 
         # Conversational turns stay in the current session; only substantive
         # content or an explicit topic change may trigger rerouting.
-        if allow_reroute and intent in {"teachback_answer", "change_topic", "session_setup"}:
+        if allow_reroute:
             route = (
                 router.route_lesson(self.catalog.all(), content)
                 if router is not None
@@ -612,11 +684,6 @@ class TeachBackWebEngine:
         # handling for teachback_answer/request_help/authority_attack/
         # out_of_scope (deterministic recommended_gap + escalation ladder).
         # Product-specific conversation controls do not alter mastery.
-        if intent in {"source_request", "social", "session_setup", "clarification_question", "change_topic"}:
-            return self._respond_without_assessment(
-                session, lesson, content, intent=intent, provider=provider, model=selected_model
-            )
-
         recent_messages = self.store.recent_messages(session_id)
         previous_agent_response = next(
             (

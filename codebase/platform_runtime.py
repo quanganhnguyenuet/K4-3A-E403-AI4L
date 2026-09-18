@@ -21,11 +21,30 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from turn_policy import INTENTS
+from agent_core import INTENTS
 
 
 CODEBASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = CODEBASE_DIR.parent
+
+
+def _load_local_env() -> None:
+    """Load local development settings without overriding real environment variables."""
+    env_file = CODEBASE_DIR / ".env"
+    if not env_file.is_file():
+        return
+    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_local_env()
 DEFAULT_CATALOG_PATH = REPO_ROOT / "knowledge" / "lesson_catalog.json"
 DEFAULT_DB_PATH = CODEBASE_DIR / "state" / "learning.sqlite3"
 TRANSCRIPT_DIR = REPO_ROOT / "data" / "transcript"
@@ -112,7 +131,10 @@ class LessonCatalog:
             "task": lesson["task"],
             "starter_prompts": lesson.get("starter_prompts", []),
             "points": [
-                {"id": point["id"], "label": point["label"], "weight": point["weight"]}
+                {
+                    "id": point["id"], "label": point["label"], "weight": point["weight"],
+                    "sub_concepts": point.get("sub_concepts", []),
+                }
                 for point in lesson["points"]
             ],
         }
@@ -387,29 +409,97 @@ class OpenAILessonRouter:
                       "lesson_id": {"type": "string", "enum": lesson_ids},
                       "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                       "reason": {"type": "string"},
-                      "intent": {"type": "string", "enum": list(INTENTS)},
-                      "reply": {"type": "string"}},
-                  "required": ["matched", "lesson_id", "confidence", "reason", "intent", "reply"]}
+                      "intent": {"type": "string", "enum": list(INTENTS)}},
+                  "required": ["matched", "lesson_id", "confidence", "reason", "intent"]}
         candidates = [{"id": lesson["id"], "title": lesson["title"],
                        "description": lesson["description"], "task": lesson["task"],
                        "knowledge_points": [point["label"] for point in lesson["points"]]}
                       for lesson in lessons]
         parsed = self._request_structured(
             instructions=(
-                "Bạn định tuyến một chatbot ôn tập và viết phản hồi tự nhiên bằng tiếng Việt. "
-                "Chọn bài phù hợp nhất và phân loại intent. Nếu matched=true, reply phải rỗng. "
-                "Nếu matched=false, viết 1-2 câu phù hợp trực tiếp với lời người dùng: nói ngắn gọn "
-                "đó là chủ đề gì nhưng không trả lời nội dung ngoài phạm vi, rồi mời họ chọn một bài "
-                "trong danh sách. Nếu yêu cầu mơ hồ, hỏi đúng một chi tiết cần làm rõ. Không dùng câu "
-                "khuôn như 'chưa nhận ra chủ đề' và không lặp nguyên văn câu người dùng."
+                "Bạn định tuyến một chatbot ôn tập bằng tiếng Việt. Chọn bài phù hợp nhất và phân "
+                "loại intent. Không viết phản hồi cho người dùng; chỉ trả dữ liệu định tuyến."
             ), input_payload={"available_lessons": candidates, "user_prompt": content},
             schema=schema, schema_name="teachback_lesson_router")
         if parsed.get("lesson_id") not in lesson_ids:
             parsed.update({"lesson_id": lesson_ids[0], "matched": False})
         if parsed.get("intent") not in INTENTS:
             parsed["intent"] = "teachback_answer" if parsed.get("matched") else "out_of_scope"
-        parsed["reply"] = str(parsed.get("reply", "")).strip()
         return parsed
+
+    def respond_to_unmatched_prompt(
+        self, lessons: list[dict[str, Any]], content: str, intent: str, reason: str
+    ) -> str:
+        """Write the first-turn response after routing found no lesson.
+
+        Kept separate from ``route_lesson`` so routing stays a structured
+        classification call and every unmatched OpenAI chat has a dedicated
+        response-generation call.
+        """
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"reply": {"type": "string", "minLength": 1}},
+            "required": ["reply"],
+        }
+        lesson_choices = [
+            {"title": lesson["title"], "description": lesson["description"]}
+            for lesson in lessons
+        ]
+        parsed = self._request_structured(
+            instructions=(
+                "Bạn là trợ lý của ứng dụng ôn tập AI bằng tiếng Việt. Viết đúng 1-2 câu ngắn "
+                "để phản hồi lời mở đầu chưa khớp bài học nào. Nếu ngoài phạm vi, nói lịch sự rằng "
+                "bạn chỉ hỗ trợ các bài ôn AI và mời chọn một bài liên quan; không trả lời nội dung "
+                "ngoài phạm vi. Nếu người dùng muốn được giúp nhưng chưa nêu chủ đề, hỏi họ muốn ôn "
+                "gì. Nếu yêu cầu mơ hồ, hỏi một chi tiết cần làm rõ. Phản hồi tự nhiên, cụ thể theo "
+                "lời người dùng và không dùng câu khuôn."
+            ),
+            input_payload={
+                "available_lessons": lesson_choices,
+                "user_prompt": content,
+                "intent": intent,
+                "routing_reason": reason,
+            },
+            schema=schema,
+            schema_name="teachback_unmatched_chat_reply",
+            max_output_tokens=180,
+        )
+        reply = str(parsed.get("reply", "")).strip()
+        if not reply:
+            raise RuntimeError("OpenAI không tạo được phản hồi cho lời mở đầu")
+        return reply
+
+    def write_lesson_opening(self, lesson: dict[str, Any], learner_prompt: str) -> str:
+        """Generate the conversational lead-in for a newly created lesson session."""
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"opening": {"type": "string", "minLength": 20}},
+            "required": ["opening"],
+        }
+        parsed = self._request_structured(
+            instructions=(
+                "Bạn mở đầu một phiên ôn tập teach-back bằng tiếng Việt. Viết 2-4 câu ngắn, "
+                "ấm áp và tự nhiên dựa trên bài học cùng lời mở đầu của người học. Hãy chào hoặc "
+                "xác nhận phiên học, giải thích ngắn rằng người học sẽ trình bày theo cách hiểu của "
+                "mình còn bạn sẽ đồng hành làm rõ. Tuyệt đối không đặt câu hỏi kiến thức, không yêu "
+                "cầu giải thích một khái niệm cụ thể, không dùng dấu hỏi chấm và không chấm điểm."
+            ),
+            input_payload={
+                "lesson_title": lesson["title"],
+                "lesson_description": lesson["description"],
+                "lesson_goal": lesson["task"],
+                "learner_opening": learner_prompt,
+            },
+            schema=schema,
+            schema_name="teachback_lesson_opening",
+            max_output_tokens=220,
+        )
+        opening = str(parsed.get("opening", "")).strip()
+        if not opening or "?" in opening:
+            raise RuntimeError("OpenAI tạo lời mở đầu không hợp lệ")
+        return opening
 
 
 def runtime_info() -> dict[str, Any]:
