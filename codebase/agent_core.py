@@ -19,6 +19,7 @@ import unicodedata
 import urllib.error
 import urllib.request
 import uuid
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -283,7 +284,12 @@ def looks_insufficient(value: str) -> bool:
     )
 
 
-def looks_out_of_scope(value: str, domain_patterns: tuple[str, ...] = DOMAIN_PATTERNS) -> bool:
+def looks_out_of_scope(
+    value: str,
+    domain_patterns: tuple[str, ...] = DOMAIN_PATTERNS,
+    *,
+    has_domain_signal: bool = False,
+) -> bool:
     text = normalize_text(value)
     explicit_outside_patterns = (
         r"\bthoi tiet\b",
@@ -300,6 +306,15 @@ def looks_out_of_scope(value: str, domain_patterns: tuple[str, ...] = DOMAIN_PAT
     # the raw text so it isn't confused with the domain keyword after
     # normalize_text lowercases everything.
     has_ai_acronym = re.search(r"\bAI\b", value) is not None
+    if has_domain_signal:
+        # Some other harness signal (e.g. a detected lesson point) already
+        # confirms the turn is on-topic. domain_patterns for lessons outside
+        # the hand-tuned D3 one are just a short scope_terms list, so a plain
+        # "no literal keyword hit" here is too weak on its own to overrule
+        # that — it would punish natural paraphrasing instead of catching
+        # genuinely unrelated turns (those still hit explicit_outside_patterns
+        # above regardless of this flag).
+        return False
     return (
         not looks_insufficient(value)
         and not has_ai_acronym
@@ -532,6 +547,10 @@ class AssessmentProvider(Protocol):
     ) -> dict[str, Any]: ...
 
 
+class ResponsesRefusalError(RuntimeError):
+    """The Responses API returned only a "refusal" content block, no output_text."""
+
+
 class OpenAIResponsesProvider:
     """Minimal dependency-free adapter for the OpenAI Responses API."""
 
@@ -559,17 +578,53 @@ class OpenAIResponsesProvider:
         if isinstance(raw.get("output_text"), str):
             return raw["output_text"]
         texts: list[str] = []
+        refusals: list[str] = []
         for item in raw.get("output", []):
             if item.get("type") != "message":
                 continue
             for content in item.get("content", []):
                 if content.get("type") == "output_text" and isinstance(content.get("text"), str):
                     texts.append(content["text"])
-        if not texts:
-            raise RuntimeError("Responses API returned no output_text")
-        return "\n".join(texts)
+                elif content.get("type") == "refusal" and isinstance(content.get("refusal"), str):
+                    refusals.append(content["refusal"])
+        if texts:
+            return "\n".join(texts)
+        if refusals:
+            # gpt-4o-mini occasionally routes a perfectly ordinary, on-topic reply through
+            # the "refusal" content channel instead of output_text (a moderation-layer
+            # false positive, not an actual refusal) — sampling again almost always lands
+            # on output_text for the same prompt, so let the caller retry once instead of
+            # failing the whole turn/batch outright.
+            raise ResponsesRefusalError(refusals[0])
+        raise RuntimeError("Responses API returned no output_text")
 
     def _request_structured(
+        self,
+        *,
+        instructions: str,
+        input_text: str,
+        schema: dict[str, Any],
+        schema_name: str,
+        component: str,
+        session_id: str,
+        max_output_tokens: int = 1200,
+    ) -> dict[str, Any]:
+        try:
+            return self._request_structured_once(
+                instructions=instructions, input_text=input_text, schema=schema,
+                schema_name=schema_name, component=component, session_id=session_id,
+                max_output_tokens=max_output_tokens,
+            )
+        except ResponsesRefusalError:
+            # One retry: a fresh sample of the same prompt almost always lands on a normal
+            # output_text response (see _extract_output_text for why this channel misfires).
+            return self._request_structured_once(
+                instructions=instructions, input_text=input_text, schema=schema,
+                schema_name=schema_name, component=component, session_id=session_id,
+                max_output_tokens=max_output_tokens,
+            )
+
+    def _request_structured_once(
         self,
         *,
         instructions: str,
@@ -1047,6 +1102,7 @@ class TeachBackAgent:
             ],
             "classification_rules": [
                 "Use misconception_assessments=[] when the learner is merely incomplete or vague.",
+                "A hedged or questioning turn ('chắc là...', 'hay là còn thiếu gì', 'đúng không ạ?', 'em cũng phân vân') asks for confirmation instead of asserting, and reporting what other people believe is not the learner's own claim — neither is a misconception; ask to clarify first.",
                 "Do not infer beliefs from silence and never list every misconception as a default.",
                 "out_of_scope=true only for an unrelated answer; insufficient_input=true for 'không biết', a tautology, or an answer too short to assess.",
                 "copied_source=true only when wording substantially reproduces a supplied source phrase, not merely because the idea is correct.",
@@ -1066,7 +1122,13 @@ class TeachBackAgent:
     def _evidence_is_grounded(evidence: Any, explanation: str) -> bool:
         if not isinstance(evidence, str) or not evidence.strip():
             return False
-        return normalize_text(evidence) in normalize_text(explanation)
+        # Models commonly wrap a quote in "..." to mark it trimmed from a longer utterance,
+        # or in quote marks to mark it as a quotation. Neither is part of the learner's
+        # actual words, so strip them before checking the quote is real and not fabricated.
+        trimmed = evidence.strip().strip("\"'“”‘’ .…").strip()
+        if not trimmed:
+            return False
+        return normalize_text(trimmed) in normalize_text(explanation)
 
     def _validate_assessment(self, raw: dict[str, Any], explanation: str) -> dict[str, Any]:
         point_ids = self.knowledge.point_ids
@@ -1106,26 +1168,71 @@ class TeachBackAgent:
         misconception_rows = raw.get("misconception_assessments", [])
         if not isinstance(misconception_rows, list):
             misconception_rows = []
+        candidates: list[tuple[str, Any, float, bool, bool]] = []
         for row in misconception_rows:
             if not isinstance(row, dict):
                 continue
             misconception_id = row.get("id")
+            if misconception_id not in misconception_ids:
+                continue
             evidence = row.get("student_evidence")
             try:
                 confidence = min(1.0, max(0.0, float(row.get("confidence", 0))))
             except (TypeError, ValueError):
                 confidence = 0.0
-            if (
-                misconception_id in explicit_misconceptions
-                and self._evidence_is_grounded(evidence, explanation)
-            ):
+            harness_confirmed = misconception_id in explicit_misconceptions
+            grounded = confidence >= 0.6 and self._evidence_is_grounded(evidence, explanation)
+            candidates.append((misconception_id, evidence, confidence, harness_confirmed, grounded))
+        # The harness signal list is a fixed set of literal phrases per misconception, so it
+        # misses a learner's own paraphrase of the same wrong claim — trust the model's own
+        # call too when its evidence is a real, specific quote from what the learner said.
+        # Two things still need harness corroboration instead:
+        # - over-claiming: a model reusing the exact same evidence span for several
+        #   misconceptions at once (a blanket "flag everything" dump), rather than pointing
+        #   at each claim's own words;
+        # - self-contradiction: a model that just confirmed (with real evidence) a point this
+        #   very misconception conflicts with can't also be right that the learner holds it.
+        model_only = [
+            (misconception_id, normalize_text(evidence), confidence)
+            for misconception_id, evidence, confidence, harness, grounded in candidates
+            if grounded and not harness and isinstance(evidence, str)
+        ]
+        span_counts = Counter(span for _, span, _ in model_only)
+        recycled_evidence = set()
+        for misconception_id, span, confidence in model_only:
+            # The exact same span cited for several misconceptions is a blanket "flag
+            # everything" dump — it discriminates between none of them, so none of them
+            # stands on the model's word alone.
+            if span_counts[span] > 1:
+                recycled_evidence.add(misconception_id)
+                continue
+            for other_id, other_span, other_confidence in model_only:
+                # Overlapping-but-different spans mean the model quoted roughly the same
+                # words twice; keep the call it was most sure of, drop the echo.
+                if other_id == misconception_id or span_counts[other_span] > 1:
+                    continue
+                overlapping = span in other_span or other_span in span
+                if overlapping and (other_confidence, other_id) > (confidence, misconception_id):
+                    recycled_evidence.add(misconception_id)
+        supported_points = {
+            row["point_id"] for row in raw["point_assessments"] if row["verdict"] == "supported"
+        }
+        for misconception_id, evidence, confidence, harness_confirmed, grounded in candidates:
+            conflicts_with = set(self.knowledge.misconceptions[misconception_id].get("conflicts_with", []))
+            model_confirmed = (
+                grounded
+                and isinstance(evidence, str)
+                and misconception_id not in recycled_evidence
+                and not (conflicts_with & supported_points)
+            )
+            if harness_confirmed or model_confirmed:
                 accepted_misconceptions[misconception_id] = {
                     "id": misconception_id,
                     "student_evidence": evidence,
                     "confidence": confidence,
-                    "verified_by": "model_and_harness",
+                    "verified_by": "model_and_harness" if harness_confirmed else "model_grounded",
                 }
-            elif misconception_id in misconception_ids:
+            else:
                 discarded_misconceptions.append(misconception_id)
         for misconception_id in explicit_misconceptions:
             accepted_misconceptions.setdefault(
@@ -1143,6 +1250,25 @@ class TeachBackAgent:
         ]
         raw["misconceptions"] = sorted(accepted_misconceptions)
         raw["discarded_misconceptions"] = sorted(set(discarded_misconceptions))
+        # Self-contradiction guard: the same span cannot both prove the learner understood a
+        # point and be an accepted misconception. When it does (e.g. "vector nhúng chỉ là một
+        # cách mã hoá từ thành số" cited as both P2-supported and misconception C1), the safe
+        # read is that the sentence is the wrong claim, not a demonstration of mastery — so
+        # drop the point back to absent rather than reward a misconception as understanding.
+        misconception_spans = [
+            normalize_text(row["student_evidence"])
+            for row in raw["misconception_assessments"]
+            if isinstance(row.get("student_evidence"), str)
+        ]
+        for row in raw["point_assessments"]:
+            if row["verdict"] != "supported":
+                continue
+            point_span = normalize_text(row.get("student_evidence") or "")
+            if point_span and any(
+                point_span in mspan or mspan in point_span for mspan in misconception_spans
+            ):
+                row["verdict"] = "absent"
+                row["student_evidence"] = None
         raw["recommended_gap"] = (
             raw.get("recommended_gap") if raw.get("recommended_gap") in point_ids else None
         )

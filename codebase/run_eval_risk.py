@@ -129,45 +129,63 @@ def main() -> None:
         if args.pipeline == "web"
         else None
     )
-    known_source_ids = set(knowledge.sources)
+    default_source_ids = set(knowledge.sources)
 
     results: list[dict[str, Any]] = []
     for index, case in enumerate(cases, start=1):
-        print(f"[{index:02d}/{len(cases)}] {case['id']} ({case['risk_layer']}, {case['frequency']}/{case['provenance']})")
-        if agent is not None:
-            actual = agent.run_turn(case["input"], case.get("previous_state"))
-        else:
-            assert platform is not None
-            session = platform.create_session("why-llm-hallucinates")
-            previous = case.get("previous_state") or {}
-            covered = list(previous.get("covered_points", []))
-            progress = min(100, len(covered) * 25)
-            platform.store.update_session(
-                session["id"],
-                status="coaching" if covered else "new",
-                progress=progress,
-                covered_points=covered,
-                misconceptions=list(previous.get("unresolved_misconceptions", [])),
-                provider=resolved_provider,
-                model=os.getenv("OPENAI_MODEL"),
-                attempts_by_gap=dict(previous.get("attempts_by_gap", {})),
-                last_target_gap=previous.get("last_target_gap"),
-                recovery_stage=previous.get("recovery_stage", "none"),
-                turn=int(previous.get("turn", 0)),
-                awaiting_transfer=bool(previous.get("awaiting_transfer", False)),
-                transfer_passed=bool(previous.get("transfer_passed", False)),
-                mastery_complete=bool(previous.get("mastery_complete", False)),
+        lesson_id = str(case.get("lesson_id") or "why-llm-hallucinates")
+        print(f"[{index:02d}/{len(cases)}] {case['id']} ({case['risk_layer']}, {case['frequency']}/{case['provenance']}, lesson={lesson_id})")
+        if agent is not None and lesson_id != "why-llm-hallucinates":
+            raise SystemExit(
+                f"{case['id']}: --pipeline core chi ho tro lesson 'why-llm-hallucinates' "
+                "(TeachBackAgent/KnowledgeBase la engine cu, don-lesson). Dung --pipeline web cho case nay."
             )
-            actual = platform.send_message(
-                session["id"],
-                case["input"],
-                provider=resolved_provider,
-                model=os.getenv("OPENAI_MODEL"),
-                allow_reroute=False,
-            )
-            actual["evidence_source_ids"] = [
-                source["id"] for source in actual.get("source_cards", [])
-            ]
+        try:
+            if agent is not None:
+                actual = agent.run_turn(case["input"], case.get("previous_state"))
+                known_source_ids = default_source_ids
+            else:
+                assert platform is not None
+                known_source_ids = {source["id"] for source in platform.catalog.get(lesson_id)["sources"]}
+                session = platform.create_session(lesson_id)
+                previous = case.get("previous_state") or {}
+                covered = list(previous.get("covered_points", []))
+                progress = min(100, len(covered) * 25)
+                platform.store.update_session(
+                    session["id"],
+                    status="coaching" if covered else "new",
+                    progress=progress,
+                    covered_points=covered,
+                    misconceptions=list(previous.get("unresolved_misconceptions", [])),
+                    provider=resolved_provider,
+                    model=os.getenv("OPENAI_MODEL"),
+                    attempts_by_gap=dict(previous.get("attempts_by_gap", {})),
+                    last_target_gap=previous.get("last_target_gap"),
+                    recovery_stage=previous.get("recovery_stage", "none"),
+                    turn=int(previous.get("turn", 0)),
+                    awaiting_transfer=bool(previous.get("awaiting_transfer", False)),
+                    transfer_passed=bool(previous.get("transfer_passed", False)),
+                    mastery_complete=bool(previous.get("mastery_complete", False)),
+                )
+                actual = platform.send_message(
+                    session["id"],
+                    case["input"],
+                    provider=resolved_provider,
+                    model=os.getenv("OPENAI_MODEL"),
+                    allow_reroute=False,
+                )
+                actual["evidence_source_ids"] = [
+                    source["id"] for source in actual.get("source_cards", [])
+                ]
+        except Exception as exc:  # noqa: BLE001 - one bad case must not sink the whole run
+            print(f"  LOI: {exc!r} -- bo qua case nay, xem tiep cac case con lai", flush=True)
+            results.append({
+                "id": case["id"], "risk_layer": case["risk_layer"], "frequency": case["frequency"],
+                "provenance": case["provenance"], "auto_checks": {}, "auto_pass": None,
+                "hard_constraints": case.get("hard_constraints", []), "scoring_note": case.get("scoring_note", ""),
+                "actual": {"error": repr(exc), "agent_response": ""},
+            })
+            continue
         checks = auto_score(case, actual, known_source_ids)
         auto_pass = all(checks.values()) if checks else None
         results.append(

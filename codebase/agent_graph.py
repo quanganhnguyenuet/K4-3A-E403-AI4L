@@ -180,12 +180,40 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
 
         explicit_points = agent._detect_points(explanation)
         assessment["harness_supported_points"] = sorted(explicit_points)
-        deterministic_insufficient = intent == "request_help" or looks_insufficient(explanation)
+        # The deterministic keyword detector (explicit_points) is a fixed phrase list per
+        # point, so it misses natural paraphrasing. The model's own point_assessments are a
+        # second, independent on-topic signal that's just as trustworthy here: _validate_
+        # assessment already downgraded any "supported"/"contradicted" verdict back to
+        # "absent" unless its evidence is a real quote grounded in this explanation, so a
+        # surviving non-absent verdict means the model engaged with a specific lesson point,
+        # not just a generic "sounds relevant" guess.
+        grounded_llm_points = {
+            row["point_id"]
+            for row in assessment["point_assessments"]
+            if row["verdict"] in {"supported", "contradicted"}
+        }
+        # Each of these is the model's own, already-semantic read that the turn belongs to
+        # THIS lesson, so a keyword-absence guess must not overrule them: a detected point,
+        # a grounded misconception (you can't hold a lesson's misconception while talking
+        # about something unrelated), or "the learner is stuck / said too little" — being
+        # stuck on the lesson is not the same as being off it.
+        model_says_thin = intent == "request_help" or bool(assessment.get("insufficient_input"))
+        has_domain_signal = (
+            bool(explicit_points)
+            or bool(grounded_llm_points)
+            or bool(assessment["misconceptions"])
+            or model_says_thin
+        )
+        deterministic_insufficient = model_says_thin or looks_insufficient(explanation)
         deterministic_out_of_scope = intent in {
             "out_of_scope",
             "authority_attack",
             "change_topic",
-        } or looks_out_of_scope(explanation, domain_patterns=agent.out_of_scope_patterns)
+        } or looks_out_of_scope(
+            explanation,
+            domain_patterns=agent.out_of_scope_patterns,
+            has_domain_signal=has_domain_signal,
+        )
         if deterministic_out_of_scope:
             assessment["out_of_scope"] = True
             assessment["insufficient_input"] = False
@@ -235,9 +263,20 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
         verdict_by_point = {
             row["point_id"]: row["verdict"] for row in assessment["point_assessments"]
         }
-        current_supported = {
+        # A "contradicted" verdict survived grounding, so the learner really did say
+        # something that runs against this point. The regex net (explicit_points) only sees
+        # that a rubric keyword appears, not whether it was affirmed or dismissed — without
+        # this guard "khỏi cần khảo sát người dùng" would earn the user-research point, and
+        # a point already covered would stay covered while being contradicted out loud.
+        contradicted_points = {
+            point_id for point_id, verdict in verdict_by_point.items() if verdict == "contradicted"
+        }
+        # A turn whose content is a wrong claim is not a demonstration of mastery, so the
+        # keyword net must not hand out points for rubric words that appear inside it.
+        keyword_points = set() if assessment["misconceptions"] else explicit_points
+        current_supported = ({
             point_id for point_id, verdict in verdict_by_point.items() if verdict == "supported"
-        } | explicit_points
+        } | keyword_points) - contradicted_points
         if (
             assessment.get("intent") != "teachback_answer"
             or assessment.get("copied_source")
@@ -247,7 +286,7 @@ def build_graph(agent: TeachBackAgent) -> StateGraph:
             # và một input không đủ nội dung cũng không phải bằng chứng. Không
             # cộng điểm mới từ lượt này, chỉ giữ các điểm đã xác nhận từ trước.
             current_supported = set()
-        covered = set(covered_points) | current_supported
+        covered = (set(covered_points) | current_supported) - contradicted_points
 
         unresolved = set(unresolved_misconceptions)
         for previous_misconception in list(unresolved):

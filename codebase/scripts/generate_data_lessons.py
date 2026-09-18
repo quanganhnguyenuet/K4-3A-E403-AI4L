@@ -20,7 +20,13 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(encoding="utf-8")
 
 from agent_core import OpenAIResponsesProvider
-from lesson_pipeline import build_validated_structure, extract_document, generate_lesson_from_structure, validate_draft
+from lesson_pipeline import (
+    build_validated_structure,
+    extract_document,
+    generate_lesson_from_structure,
+    repair_evidence_quotes,
+    validate_draft,
+)
 
 
 def metadata(index: int, filename: str) -> tuple[str, str, str]:
@@ -32,25 +38,22 @@ def metadata(index: int, filename: str) -> tuple[str, str, str]:
     return f"day-{index}-{lecture.lower().replace(' ', '-').replace('.', '-')}", title, f"Day {index}"
 
 
-def repair_evidence_quotes(lesson: dict, segments: list[dict]) -> None:
-    """The model selects source IDs semantically; preserve exact source text for validation."""
-    source_by_id = {segment["id"]: segment["text"] for segment in segments}
-    for point in lesson.get("points", []):
-        for evidence in point.get("support_evidence", []):
-            source = source_by_id.get(evidence.get("source_id"), "")
-            quote = str(evidence.get("quote", "")).strip()
-            if source and (len(quote) < 12 or quote not in source):
-                evidence["quote"] = source[: min(280, len(source))]
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--replace", action="store_true", help="replace knowledge/lesson_catalog.json")
+    parser.add_argument(
+        "--replace", action="store_true",
+        help="write results into knowledge/lesson_catalog.json (merged with existing lessons, matched by id)",
+    )
     parser.add_argument("--model", default=None)
     args = parser.parse_args()
     files = sorted(list((ROOT / "data").glob("*.pptx")) + list((ROOT / "data").glob("*.pdf")))
     if not files:
         raise SystemExit("Không tìm thấy PDF/PPTX trong data")
+    output = ROOT / "knowledge" / "lesson_catalog.json"
+    existing_lessons = []
+    if output.is_file():
+        existing_lessons = json.loads(output.read_text(encoding="utf-8")).get("lessons", [])
+    existing_ids = {item["id"] for item in existing_lessons}
     provider = OpenAIResponsesProvider(model=args.model)
     lessons = []
     lessons_by_hash = {}
@@ -60,6 +63,9 @@ def main() -> None:
         segments, units = parsed["segments"], parsed["units"]
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         lesson_id, title, track = metadata(index, path.name)
+        # This file's own generated id never counts as a collision with itself, since it is
+        # about to replace whatever earlier version of this same lesson already exists.
+        other_ids = (existing_ids | {item["id"] for item in lessons}) - {lesson_id}
         if digest in lessons_by_hash:
             lesson = copy.deepcopy(lessons_by_hash[digest])
             lesson["id"], lesson["title"], lesson["track"] = lesson_id, title, track
@@ -83,7 +89,7 @@ def main() -> None:
                 raise RuntimeError("lesson cần ít nhất 2 khái niệm lớn")
             lesson["id"], lesson["title"], lesson["track"] = lesson_id, title, track
             lesson["description"] = f"Ôn tập từ file {path.name}."
-            validated, errors = validate_draft({"lesson": lesson}, segments, {item["id"] for item in lessons})
+            validated, errors = validate_draft({"lesson": lesson}, segments, other_ids)
             if errors or validated is None:
                 raise RuntimeError("; ".join(errors))
         except RuntimeError as exc:
@@ -93,13 +99,17 @@ def main() -> None:
         lessons_by_hash[digest] = copy.deepcopy(validated)
     if not lessons:
         raise SystemExit("Không có lesson nào hợp lệ được tạo ra")
-    payload = {"schema_version": "2.0", "lessons": lessons}
-    output = ROOT / "knowledge" / "lesson_catalog.json"
     if not args.replace:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        print(json.dumps({"schema_version": "2.0", "lessons": lessons}, ensure_ascii=False, indent=2))
         return
+    # Merge into the existing catalog instead of replacing it wholesale: a lesson generated
+    # from data/ overwrites its own previous version (same id), everything else -- including
+    # hand-authored lessons that this script never touches -- is left exactly as it was.
+    generated_ids = {item["id"] for item in lessons}
+    merged = [item for item in existing_lessons if item["id"] not in generated_ids] + lessons
+    payload = {"schema_version": "2.0", "lessons": merged}
     output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Wrote {len(lessons)} lessons to {output}")
+    print(f"Wrote {len(merged)} lessons to {output} ({len(lessons)} generated just now, {len(merged) - len(lessons)} kept from before)")
 
 
 if __name__ == "__main__":

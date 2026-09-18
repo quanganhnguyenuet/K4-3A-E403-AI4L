@@ -279,6 +279,17 @@ def generate_lesson_from_structure(structure: dict[str, Any], segments: list[dic
     )
 
 
+def repair_evidence_quotes(lesson: dict[str, Any], segments: list[dict[str, Any]]) -> None:
+    """The model selects source IDs semantically; preserve exact source text for validation."""
+    source_by_id = {segment["id"]: segment["text"] for segment in segments}
+    for point in lesson.get("points", []):
+        for evidence in point.get("support_evidence", []):
+            source = source_by_id.get(evidence.get("source_id"), "")
+            quote = str(evidence.get("quote", "")).strip()
+            if source and (len(quote) < 12 or quote not in source):
+                evidence["quote"] = source[: min(280, len(source))]
+
+
 def validate_draft(generated: dict[str, Any], segments: list[dict[str, str]], existing_ids: set[str]) -> tuple[dict[str, Any] | None, list[str]]:
     """Accept only structurally-valid lessons whose quoted evidence occurs in the upload."""
     errors: list[str] = []
@@ -375,12 +386,16 @@ class LessonDraftService:
         session_id = f"lesson-draft-{uuid.uuid4()}"
         structure, unresolved_issues = build_validated_structure(units, segments, provider, session_id=session_id)
         generated = generate_lesson_from_structure(structure, segments, provider, session_id=session_id)
+        if isinstance(generated.get("lesson"), dict):
+            repair_evidence_quotes(generated["lesson"], segments)
         lesson, errors = validate_draft(generated, segments, set(self.catalog._lessons))
         errors = errors + unresolved_issues
         return self.store.save(Path(filename).name, segments, generated, lesson, errors, structure=structure, critic_issues=unresolved_issues)
 
     def revise(self, draft_id: str, generated: dict[str, Any]) -> dict[str, Any]:
         draft = self.store.get(draft_id)
+        if isinstance(generated.get("lesson"), dict):
+            repair_evidence_quotes(generated["lesson"], draft["segments"])
         lesson, errors = validate_draft(generated, draft["segments"], set(self.catalog._lessons))
         return self.store.save(draft["filename"], draft["segments"], generated, lesson, errors, draft_id, structure=draft["structure"], critic_issues=draft["critic_issues"])
 
