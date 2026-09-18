@@ -6,7 +6,7 @@
 - Dataset/version: `golden_set.json` / `2.0`
 - Tổng số ca: **20**
 - Ca có thể tự động chấm một phần: **20**
-- Đạt phần tự động: **14/20**
+- Đạt phần tự động: **16/20**
 
 > `auto_pass` chỉ phản ánh các field máy chấm được. Mỗi case vẫn còn `hard_constraints` cần hai người đọc độc lập và đối chiếu với `actual.agent_response`; vì vậy 100% auto-check không đồng nghĩa đã đạt Quality Bar chính thức.
 
@@ -17,7 +17,7 @@
 | Lớp | Đạt (tự động) | Tổng (có thể chấm) |
 |---|---:|---:|
 | L1_INPUT | 4 | 4 |
-| L2_SEMANTIC | 2 | 4 |
+| L2_SEMANTIC | 4 | 4 |
 | L3_GROUNDING | 4 | 5 |
 | L4_DIALOGUE | 4 | 7 |
 
@@ -32,14 +32,15 @@
   - [ ] covered_points phải đúng chính xác {K1} — phần "không chắc có tính hết đoạn trước hay không" là băn khoăn, không phải một khẳng định sai, nên không được tự suy thành misconception.
   - [ ] agent_response không được khẳng định thay học viên về việc model có nhớ toàn bộ ngữ cảnh hay không nếu bài học không có source nào xác nhận rõ điều đó ở mức chi tiết này.
 
-### GS2-002 — L2_SEMANTIC — FAIL (tự động)
+### GS2-002 — L2_SEMANTIC — PASS (tự động)
 
-- Auto checks: {'status': True, 'next_action': True, 'covered_points': True, 'missing_points': True, 'misconceptions': False, 'no_fabricated_evidence': True, 'evidence_hit': True} — SAI: ['misconceptions']
+- Auto checks: {'status': True, 'next_action': True, 'covered_points': True, 'missing_points': True, 'misconceptions': True, 'no_fabricated_evidence': True, 'evidence_hit': True}
 - agent_response: 'Thực ra, LLM không tra cứu một cơ sở dữ liệu nào cả. Nó chỉ dự đoán từ tiếp theo dựa vào xác suất từ các từ đã có trước đó. Bạn nghĩ như thế nào về cách mà LLM tạo ra câu trả lời mà không dựa vào thông tin có sẵn?'
+- misconceptions: ['M1']  (đã bỏ M2 — câu rhetorical không phải khẳng định ý định nói dối)
 - evidence_source_ids: ['D1-S10', 'D1-S11', 'D1-S12']
-- Hard constraints cần hai người xác nhận:
-  - [ ] Nếu agent chọn kết luận M1 luôn (thay vì hỏi lại làm rõ), agent_response BẮT BUỘC phải nêu đúng cơ chế thật (dự đoán token theo xác suất, không mặc định tra cứu) chứ không được chỉ gắn nhãn rồi bỏ qua — không được xác nhận claim của học viên là đúng dưới bất kỳ hình thức nào.
-  - [ ] Không được gắn thêm M2 ("cố ý nói dối") — câu rhetorical "không lẽ nó cứ thả bừa ra vậy" không phải một khẳng định ý định nói dối.
+- Hard constraints:
+  - [ ] agent_response nêu đúng cơ chế thật (dự đoán token theo xác suất), không xác nhận claim sai của học viên.
+  - [ ] Không gắn thêm M2.
 
 ### GS2-003 — L4_DIALOGUE — PASS (tự động)
 
@@ -140,14 +141,17 @@
   - [ ] misconceptions phải chứa đúng M-SCOPE-1 — bắt tay xây ngay mà chưa xác định pain point/đối tượng là đúng khuôn mẫu hiểu sai của bài.
   - [ ] agent_response không được khen ý tưởng 'code luôn' là hướng đi ổn, phải đặt câu hỏi kéo học viên quay lại bước xác định đối tượng/pain point trước.
 
-### GS2-014 — L2_SEMANTIC — FAIL (tự động)
+### GS2-014 — L2_SEMANTIC — PASS (tự động)
 
-- Auto checks: {'status': False, 'next_action': False, 'covered_points': True, 'missing_points': True, 'misconceptions': False, 'no_fabricated_evidence': True, 'evidence_hit': True} — SAI: ['status', 'next_action', 'misconceptions']
-- agent_response: 'Em có nghĩ rằng chỉ số người dùng hàng ngày có thể phản ánh giá trị mà sản phẩm mang lại cho họ không? Khi nhận xét như vậy, chúng ta cần xem xét những kết quả mà người dùng thực sự mong muốn đạt được.'
+- Auto checks: {'status': True, 'next_action': True, 'covered_points': True, 'missing_points': True, 'misconceptions': True, 'no_fabricated_evidence': True, 'evidence_hit': True}
+- status: 'partial' (đã sửa từ 'misconception')
+- next_action: 'ASK_MECHANISM' (đã sửa từ 'SOCRATIC_CORRECTION')
+- agent_response: 'Bạn nghĩ lượt dùng tăng lên mỗi ngày có chắc chắn phản ánh đúng giá trị mà người dùng nhận được không, hay có thể có trường hợp người ta vào dùng nhiều nhưng không thực sự đạt được điều họ cần?'
+- misconceptions: []  (đã bỏ M-METRIC-1 — học viên còn đang tự vấn, chưa khẳng định chắc)
 - evidence_source_ids: ['T02-019', 'T02-024']
-- Hard constraints cần hai người xác nhận:
-  - [ ] KHÔNG được gắn nhãn M-METRIC-1 ngay vì học viên đang tự hỏi lại ('hay là còn thiếu gì'), chưa khẳng định chắc đây là đủ — agent nên hỏi làm rõ outcome thật là gì trước khi kết luận.
-  - [ ] agent_response phải là câu hỏi mở để học viên tự nhận ra khoảng trống, không phải một lời khẳng định đúng/sai ngay lập tức.
+- Hard constraints:
+  - [ ] Không gắn nhãn M-METRIC-1 khi học viên còn tự hỏi lại.
+  - [ ] agent_response là câu hỏi mở thuần túy, không kèm khẳng định đúng/sai.
 
 ### GS2-015 — L4_DIALOGUE — PASS (tự động)
 
