@@ -21,6 +21,7 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from lesson_engine import TeachBackWebEngine
+from lesson_pipeline import LessonDraftService
 from platform_runtime import ConversationStore, LessonCatalog, runtime_info
 
 
@@ -28,7 +29,7 @@ CODEBASE_DIR = Path(__file__).resolve().parent
 UI_DIR = CODEBASE_DIR / "ui"
 
 
-def make_handler(platform: TeachBackWebEngine, default_provider: str = "auto"):
+def make_handler(platform: TeachBackWebEngine, default_provider: str = "auto", draft_service: LessonDraftService | None = None):
     resolved_provider = (
         runtime_info()["default_provider"] if default_provider == "auto" else default_provider
     )
@@ -53,9 +54,9 @@ def make_handler(platform: TeachBackWebEngine, default_provider: str = "auto"):
             self._headers(status)
             self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
 
-        def _read_json(self) -> dict[str, Any]:
+        def _read_json(self, max_bytes: int = 17_000_000) -> dict[str, Any]:
             content_length = int(self.headers.get("Content-Length", "0"))
-            if content_length <= 0 or content_length > 100_000:
+            if content_length <= 0 or content_length > max_bytes:
                 raise ValueError("Kích thước request không hợp lệ")
             payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
             if not isinstance(payload, dict):
@@ -111,6 +112,12 @@ def make_handler(platform: TeachBackWebEngine, default_provider: str = "auto"):
                     limit = int(query.get("limit", ["30"])[0])
                     self._json({"sessions": platform.list_sessions(limit)})
                     return
+                if path.startswith("/api/lesson-drafts/"):
+                    if draft_service is None:
+                        raise KeyError("lesson draft API is unavailable")
+                    draft_id = path.removeprefix("/api/lesson-drafts/").strip("/")
+                    self._json(draft_service.store.get(draft_id))
+                    return
                 if path.startswith("/api/sessions/"):
                     session_id = path.removeprefix("/api/sessions/").strip("/")
                     if not session_id or "/" in session_id:
@@ -152,13 +159,41 @@ def make_handler(platform: TeachBackWebEngine, default_provider: str = "auto"):
                     )
                     self._json(result, HTTPStatus.CREATED if result.get("session_id") else HTTPStatus.OK)
                     return
+                if path == "/api/lesson-drafts":
+                    if draft_service is None:
+                        raise KeyError("lesson draft API is unavailable")
+                    draft = draft_service.create(
+                        str(payload.get("filename", "")), str(payload.get("content_base64", "")),
+                        str(payload.get("api_key", "") or "") or None,
+                        str(payload.get("model", "") or "") or None,
+                    )
+                    self._json(draft, HTTPStatus.CREATED)
+                    return
+                if path.startswith("/api/lesson-drafts/") and path.endswith("/revise"):
+                    if draft_service is None or not isinstance(payload.get("generated"), dict):
+                        raise ValueError("Cần dữ liệu generated hợp lệ")
+                    draft_id = path.removeprefix("/api/lesson-drafts/").removesuffix("/revise").strip("/")
+                    self._json(draft_service.revise(draft_id, payload["generated"]))
+                    return
+                if path.startswith("/api/lesson-drafts/") and path.endswith("/publish"):
+                    if draft_service is None:
+                        raise KeyError("lesson draft API is unavailable")
+                    draft_id = path.removeprefix("/api/lesson-drafts/").removesuffix("/publish").strip("/")
+                    lesson = draft_service.publish(draft_id)
+                    self._json({"lesson": platform.catalog.public_lesson(lesson)})
+                    return
                 if path == "/api/sessions/clear":
                     deleted = platform.clear_history()
                     self._json({"ok": True, "deleted_sessions": deleted})
                     return
                 if path == "/api/sessions":
                     lesson_id = str(payload.get("lesson_id") or platform.catalog.default_lesson_id)
-                    self._json(platform.create_session(lesson_id), HTTPStatus.CREATED)
+                    self._json(platform.create_session(
+                        lesson_id,
+                        provider=str(payload.get("provider", resolved_provider)),
+                        model=str(payload.get("model", "") or "") or None,
+                        api_key=str(payload.get("api_key", "") or "") or None,
+                    ), HTTPStatus.CREATED)
                     return
                 if path.startswith("/api/sessions/") and path.endswith("/messages"):
                     session_id = (
@@ -230,8 +265,9 @@ def main() -> None:
         catalog=LessonCatalog(args.catalog) if args.catalog else None,
         store=ConversationStore(args.db) if args.db else None,
     )
+    drafts = LessonDraftService(platform.catalog, on_publish=platform.reload_catalog)
     server = ThreadingHTTPServer(
-        (args.host, args.port), make_handler(platform, default_provider=args.provider)
+        (args.host, args.port), make_handler(platform, default_provider=args.provider, draft_service=drafts)
     )
     print(f"Teach-back Studio listening on http://{args.host}:{args.port}")
     print("Provider and model can be selected in the UI; Ctrl+C to stop")

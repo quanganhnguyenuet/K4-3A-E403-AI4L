@@ -99,14 +99,18 @@
     .progress-head strong { color: var(--ink); font-size: 13px; }
     .progress-track { height: 7px; background: #deddd5; border-radius: 999px; overflow: hidden; }
     .progress-fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--green), #50a477); transition: width .45s ease; border-radius: inherit; }
-    .point-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+    .point-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
     .point {
       border: 1px solid var(--line); background: rgba(255,255,255,.55);
-      padding: 8px 9px; border-radius: 10px; min-width: 0;
+      padding: 9px; border-radius: 10px; min-width: 0; text-align: left; color: var(--ink);
     }
+    button.point { cursor: pointer; }
     .point.covered { background: var(--mint); border-color: #b8d6c1; }
     .point b { display: block; font-size: 10px; color: var(--green-2); }
     .point span { display: block; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    .subconcept-list { grid-column: 1 / -1; margin: -2px 0 2px; border-left: 2px solid #bdd7c5; padding-left: 10px; display: grid; gap: 5px; }
+    .subconcept { display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 7px; background: rgba(255,255,255,.5); font-size: 10px; color: var(--muted); }
+    .subconcept.complete { color: var(--green); background: var(--mint); }
 
     .chat { flex: 1; min-height: 0; overflow-y: auto; padding: 24px max(26px, calc((100% - 800px) / 2)); }
     .progress-area.empty { display: none; }
@@ -387,12 +391,7 @@
         els.progressFill.style.width = `${session.progress}%`;
         els.pointRow.innerHTML = "";
         const covered = new Set(session.covered_points || []);
-        for (const point of lesson.points) {
-          const div = document.createElement("div");
-          div.className = "point" + (covered.has(point.id) ? " covered" : "");
-          div.innerHTML = `<b>${covered.has(point.id) ? "✓" : point.id} · ${point.weight}%</b><span title="${escapeHtml(point.label)}">${escapeHtml(point.label)}</span>`;
-          els.pointRow.appendChild(div);
-        }
+        renderConceptProgress(lesson.points, covered);
         renderMessages(session.messages || []);
         renderStarters(lesson.starter_prompts || []);
         renderStatus(session.status);
@@ -544,7 +543,12 @@
         try {
           state.activeSession = await api("/api/sessions", {
             method: "POST",
-            body: JSON.stringify({ lesson_id: lessonId }),
+            body: JSON.stringify({
+              lesson_id: lessonId,
+              provider: state.provider,
+              model: state.model,
+              api_key: state.apiKey,
+            }),
           });
           els.messageInput.value = "";
           resizeInput();
@@ -632,12 +636,39 @@
         const lesson = currentLesson();
         els.progressText.textContent = `${session.progress}%`;
         els.progressFill.style.width = `${session.progress}%`;
-        const covered = new Set(session.covered_points || []);
-        [...els.pointRow.children].forEach((node, index) => {
-          const point = lesson.points[index];
-          node.classList.toggle("covered", covered.has(point.id));
-          node.querySelector("b").textContent = `${covered.has(point.id) ? "✓" : point.id} · ${point.weight}%`;
-        });
+        renderConceptProgress(lesson.points, new Set(session.covered_points || []));
+      }
+
+      function renderConceptProgress(points, covered) {
+        els.pointRow.innerHTML = "";
+        for (const point of points) {
+          const complete = covered.has(point.id);
+          const subs = Array.isArray(point.sub_concepts) && point.sub_concepts.length
+            ? point.sub_concepts : ["Nội dung cốt lõi của concept này"];
+          const completedWeight = complete ? point.weight : 0;
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "point" + (complete ? " covered" : "");
+          card.setAttribute("aria-expanded", "false");
+          card.innerHTML = `<b title="${escapeHtml(point.label)}">${escapeHtml(point.label)}</b><span>${completedWeight}/${point.weight}% · ${complete ? "Đã nắm" : "Đang ôn"} ▼</span>`;
+          const details = document.createElement("div");
+          details.className = "subconcept-list";
+          details.hidden = true;
+          const share = point.weight / subs.length;
+          subs.forEach((item, index) => {
+            const label = typeof item === "string" ? item : (item.label || `Concept nhỏ ${index + 1}`);
+            const row = document.createElement("div");
+            row.className = "subconcept" + (complete ? " complete" : "");
+            row.innerHTML = `<span>${escapeHtml(label)}</span><strong>${complete ? share.toFixed(1).replace(/\.0$/, "") : 0}/${share.toFixed(1).replace(/\.0$/, "")}%${complete ? " ✓" : ""}</strong>`;
+            details.appendChild(row);
+          });
+          card.addEventListener("click", () => {
+            details.hidden = !details.hidden;
+            card.setAttribute("aria-expanded", String(!details.hidden));
+            card.querySelector("span").textContent = `${completedWeight}/${point.weight}% · ${complete ? "Đã nắm" : "Đang ôn"} ${details.hidden ? "▼" : "▲"}`;
+          });
+          els.pointRow.append(card, details);
+        }
       }
 
       function openSettings() {

@@ -82,7 +82,7 @@ class WebEngineIntegrationTests(unittest.TestCase):
         restored = platform.get_session(session["id"])
         self.assertNotIn(fake_key, json.dumps(restored, ensure_ascii=False))
 
-    def test_openai_router_schema_includes_contextual_reply(self) -> None:
+    def test_openai_router_only_returns_routing_data(self) -> None:
         router = OpenAILessonRouter("sk-test", "test-model")
         captured: dict = {}
 
@@ -90,11 +90,11 @@ class WebEngineIntegrationTests(unittest.TestCase):
             captured.update(kwargs)
             return {"matched": False, "lesson_id": "why-llm-hallucinates",
                     "confidence": 0.8, "reason": "outside catalog",
-                    "intent": "out_of_scope", "reply": "Chủ đề này nằm ngoài bài ôn."}
+                    "intent": "out_of_scope"}
 
         router._request_structured = fake_request  # type: ignore[method-assign]
         result = router.route_lesson(LessonCatalog().all(), "Hà Nội là gì?")
-        self.assertIn("reply", captured["schema"]["properties"])
+        self.assertNotIn("reply", captured["schema"]["properties"])
         self.assertEqual(result["intent"], "out_of_scope")
 
     def test_first_prompt_routes_and_creates_history(self) -> None:
@@ -109,6 +109,28 @@ class WebEngineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(platform.list_sessions()), 1)
         self.assertEqual(result["tool_trace"][0]["tool"], "route_lesson")
 
+    def test_openai_first_prompt_generates_an_opening_before_assessment(self) -> None:
+        platform = self.make_platform()
+        opening = (
+            "Chào bạn, chúng ta cùng ôn lại phần này nhé. Bạn cứ trình bày theo cách hiểu của "
+            "mình, mình sẽ đồng hành để làm rõ các ý quan trọng."
+        )
+        with patch("lesson_engine.OpenAILessonRouter") as router_class:
+            router = router_class.return_value
+            router.route_lesson.return_value = {
+                "matched": True, "lesson_id": "why-llm-hallucinates", "confidence": 0.9,
+                "reason": "lesson match", "intent": "session_setup",
+            }
+            router.write_lesson_opening.return_value = opening
+            result = platform.start_chat(
+                "Mình muốn ôn về LLM.", provider="openai", model="test-model", api_key="sk-test"
+            )
+
+        router.write_lesson_opening.assert_called_once()
+        self.assertEqual(result["agent_response"], opening)
+        self.assertEqual(result["session"]["messages"][-1]["metadata"]["kind"], "opening")
+        self.assertEqual(result["tool_trace"][-1]["tool"], "write_lesson_opening")
+
     def test_ambiguous_first_prompt_does_not_create_empty_session(self) -> None:
         platform = self.make_platform()
         result = platform.start_chat(
@@ -118,7 +140,7 @@ class WebEngineIntegrationTests(unittest.TestCase):
         self.assertIsNone(result["session_id"])
         self.assertEqual(platform.list_sessions(), [])
 
-    def test_unmatched_openai_route_uses_contextual_model_reply(self) -> None:
+    def test_unmatched_openai_route_generates_a_dedicated_contextual_reply(self) -> None:
         platform = self.make_platform()
         contextual_reply = (
             "Câu hỏi về Hà Nội thuộc địa lý, còn phiên này chỉ hỗ trợ các bài ôn AI. "
@@ -131,8 +153,8 @@ class WebEngineIntegrationTests(unittest.TestCase):
                 "confidence": 0.99,
                 "reason": "Yêu cầu địa lý ngoài catalog",
                 "intent": "out_of_scope",
-                "reply": contextual_reply,
             }
+            assessor_class.return_value.respond_to_unmatched_prompt.return_value = contextual_reply
             result = platform.start_chat(
                 "Hà Nội là gì?",
                 provider="openai",
@@ -144,6 +166,8 @@ class WebEngineIntegrationTests(unittest.TestCase):
         self.assertEqual(result["status"], "out_of_scope")
         self.assertEqual(result["intent"], "out_of_scope")
         self.assertEqual(result["agent_response"], contextual_reply)
+        assessor_class.return_value.respond_to_unmatched_prompt.assert_called_once()
+        self.assertEqual(result["tool_trace"][-1]["tool"], "write_unmatched_chat_reply")
         self.assertEqual(platform.list_sessions(), [])
 
     def test_history_can_be_cleared_explicitly(self) -> None:
