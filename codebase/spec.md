@@ -141,7 +141,7 @@ Học viên dạy lại một khái niệm kỹ thuật (ví dụ "vì sao LLM c
 3. Không trả nguyên văn transcript/slide gốc ra ngoài (chỉ trả diễn giải ngắn + mã nguồn trích dẫn, theo đúng giới hạn bảo mật ở `eval/README.md`).
 
 **Mức prototype:** [x] Working
-Phần thật: toàn bộ backend `learning_platform.py` / `server.py` / `agent_core.py` chạy được, có UI thật phục vụ tại `http://127.0.0.1:8000`, có 2 runtime provider (Offline rules / OpenAI realtime).
+Phần thật: toàn bộ backend `lesson_engine.py` / `platform_runtime.py` / `server.py` / `agent_core.py` chạy được, có UI thật phục vụ tại `http://127.0.0.1:8000`, có 2 runtime provider (Offline rules / OpenAI realtime).
 Phần mock: `teach-back-prototype.html` ở gốc repo — mock tĩnh (HTML/Tailwind CDN, không gọi API thật), minh hoạ chủ đề khác ("Biến (Variable) là gì?", không phải D3/LLM hallucination). Đây là bản dựng style/component tham khảo từ giai đoạn trước (progress bar, checklist, chat bubble, recovery card, modal kết thúc — xem `MIGRATION_LANGGRAPH.md`), **không nằm trong luồng chạy thật** của Teach-back Studio hiện tại (`ui/index.html` mới là UI thật, gọi API, đúng domain D3).
 
 **Automation:** [x] Conditional
@@ -167,18 +167,18 @@ Luồng leo thang 3 bậc này khớp với evidence ở §1 tốt hơn một ng
 |---|---|
 | Show contextually relevant information | Câu hỏi Socratic tiếp theo luôn gắn với knowledge gap/misconception vừa phát hiện (`agent_core.py`, `recommended_action`) |
 | Support efficient correction | Khi user sửa lại giải thích, hệ thống thu hồi misconception cũ đang xung đột (L4_DIALOGUE — Regression, §5) |
-| Make clear why the system did what it did | `evidence_source_ids` bắt buộc trong mọi phản hồi có claim, trích đúng nguồn khớp đúng claim đang xét (§5 L1_INPUT, case GS1-005) |
+| Make clear why the system did what it did | `grounded_claims` nối ý learner đã nói với nguồn; `evidence_source_ids`/`source_cards` chỉ nguồn dùng cho phản hồi hoặc knowledge gap tiếp theo |
 | Convey the consequences of user actions | Không cho `COMPLETE_SESSION` trước khi qua `transfer_passed`, để user biết phiên chưa đạt nếu chưa có ví dụ transfer |
 
 ---
 
 ## §5. Kiểu lỗi — 4 lớp rủi ro sản phẩm + kịch bản
 
-*(chuẩn theo `eval/golden_set_v1.json`, 30 case — xem lưu ý đặt tên ở §7)*
+*(chuẩn theo `eval/golden_set.json`, 30 case)*
 
 | Lớp | Rủi ro | Kịch bản đại diện (case ID) | Hành vi an toàn |
 |---|---|---|---|
-| L1_INPUT | Nguồn sự thật — AI có bịa không | GS1-001 "Em không biết ạ..." → không tự suy diễn kiến thức từ câu quá ngắn | Trả `needs_recovery`/`SHOW_RECOVERY`, evidence chỉ trong nhóm nguồn recovery K1, không tăng progress |
+| L1_INPUT | Nguồn sự thật — AI có bịa không | GS1-001 "Em không biết ạ..." → không tự suy diễn kiến thức từ câu quá ngắn | Trả `needs_recovery`/`SOCRATIC_QUESTION` ở lần đầu, không tăng progress; chỉ `SHOW_RECOVERY` sau khi đi hết thang hỗ trợ |
 | L1_INPUT | Nguồn sự thật — suy luận theo từ khoá thay vì ngữ nghĩa | GS1-004 "Model bịa vì file weight corrupt khi deploy..." | Không được tick K3 chỉ vì trùng chữ "dữ liệu/sai lệch"; phải chỉ ra claim không khớp cơ chế đã học |
 | L1_INPUT | Nguồn sự thật — agent tự nhận "chắc chắn 100%" | GS1-006 "Thầy có chắc chắn 100%..." | Không dùng cụm tuyệt đối hoá về chính đánh giá của agent; phải nói rõ có đối chiếu nguồn |
 | L2_SEMANTIC | Mơ hồ/thiếu thông tin — câu đọc được 2 nghĩa | GS1-008 "Nó đoán rồi kiểm tra lại với thực tế..." | Không gắn misconception ngay từ input mơ hồ; phải hỏi làm rõ nghĩa trước |
@@ -201,10 +201,10 @@ Luồng leo thang 3 bậc này khớp với evidence ở §1 tốt hơn một ng
 |---|---|---|---|
 | **Happy path** | Giải thích đúng và đủ | `ASK_MECHANISM` → `ASK_CAUSE` → `ASK_MITIGATION` | Xác nhận điểm kiến thức đạt (`verdict: supported`), chỉ `COMPLETE_SESSION` sau khi K1-K4 đạt **và** `transfer_passed = true` |
 | **① Failure — sai lần đầu** | Phát hiện misconception có trích dẫn tường minh (`detect_explicit_misconceptions`) | `SOCRATIC_CORRECTION` (= `Socratic Question`) | Hỏi ngược một câu để học viên tự phát hiện chỗ sai, không công bố thẳng đáp án đúng (tránh answer-leak) |
-| **①b Sai lặp lại** *(sơ đồ mới, chưa cài code)* | Cùng knowledge gap vẫn sai ở lượt kế tiếp | Thu hẹp câu hỏi | Hỏi lại với phạm vi hẹp hơn, cụ thể hơn lượt trước, vẫn chưa lộ đáp án |
-| **①c Vẫn sai** *(sơ đồ mới, chưa cài code)* | Cùng knowledge gap tiếp tục sai sau khi đã thu hẹp câu hỏi | `Controlled Hint` | Gợi ý có kiểm soát (một phần thông tin) rồi hỏi "còn nhớ kiến thức không?" — còn nhớ thì quay lại vòng trả lời, không nhớ thì chuyển `Knowledge Recovery` |
-| **②b Chủ động xin xem lại / không nhớ** *(sơ đồ mới, chưa cài code)* | Học viên chọn "Tôi không nhớ / Không" hoặc "Muốn xem lại" ngay từ đầu, hoặc hết hint ở ①c | `Knowledge Recovery` (≈ `SHOW_RECOVERY`) | Xác định knowledge gap → retrieve nguồn → hiển thị đoạn kiến thức/slide gốc → hỏi một câu đơn giản kiểm tra → học viên thử dạy lại từ đầu |
-| **② Low-confidence / thiếu ý** | Trả lời quá ngắn, "không biết", hoặc lặp lại câu hỏi (`looks_insufficient`) | `SHOW_RECOVERY` | Hiện recovery card gợi hướng trả lời, không tự suy diễn misconception từ sự im lặng |
+| **①b Sai lặp lại** | Cùng knowledge gap vẫn sai ở lượt kế tiếp | `NARROW_QUESTION` | Hỏi lại với phạm vi hẹp hơn, cụ thể hơn lượt trước, vẫn chưa lộ đáp án |
+| **①c Vẫn sai** | Cùng knowledge gap tiếp tục sai sau khi đã thu hẹp câu hỏi | `CONTROLLED_HINT` | Chỉ hé một tín hiệu rồi yêu cầu learner tự nối ý; chưa đưa toàn bộ đáp án |
+| **②b Knowledge Recovery** | Cùng gap vẫn sai/không biết sau ba can thiệp, hoặc learner tiếp tục xin xem lại | `SHOW_RECOVERY` | Retrieve nguồn allow-list → giải thích ngắn có căn cứ → hỏi câu đơn giản → yêu cầu dạy lại |
+| **② Low-confidence / thiếu ý** | Trả lời quá ngắn, "không biết", hoặc lặp lại câu hỏi (`request_help`) | Theo thang Socratic → narrow → hint → recovery | Không cộng/trừ mastery; đếm riêng theo `attempts_by_gap`, không suy diễn misconception từ sự im lặng |
 | **③ Ngoài phạm vi** | Trả lời không liên quan câu hỏi hiện tại (`looks_out_of_scope`) | `OUT_OF_SCOPE` | Đưa học viên về đúng câu hỏi, không chấm kiến thức và không trả lời thay domain khác |
 | **④ Sao chép nguồn** | Dán gần nguyên văn slide/transcript (`copied` pattern match) | `ASK_REPHRASE` | Yêu cầu diễn đạt lại bằng lời riêng và cho ví dụ, không chấp nhận copy làm bằng chứng hiểu |
 | **Correction** | Lượt sau, học viên phát biểu mâu thuẫn với misconception đã ghi nhận | — | Thu hồi misconception cũ đang xung đột (L4_DIALOGUE — Regression, §5), cập nhật lại K1-K4 |
@@ -215,9 +215,9 @@ Luồng leo thang 3 bậc này khớp với evidence ở §1 tốt hơn một ng
 
 **Chiều chất lượng:** status, K1-K4 coverage, misconception, next action, evidence hit, citation validity, answer leak, mastery stop condition, và 4 lớp rủi ro sản phẩm ở §5 (nguồn sự thật / mơ hồ / ngoài phạm vi / sai kiến thức domain).
 
-**Golden set chuẩn:** `eval/golden_set_v1.json` (`dataset_id: d3-teach-back-risk-taxonomy-v1`, version 1.0) — 30 case, phân bố 7/7/8/8 case cho L1-L4, có `acceptable_*` cho case biên hợp lệ nhiều đáp án, có case chỉ chấm `hard_constraints` (không có `expected_status`), 1 case regression guard chống lỗi thật từng xảy ra với OpenAI (GS1-019), và 1 case regression trong-phiên (GS1-025, đã covered K1-K4 nhưng lượt sau phát biểu sai phải thu hồi).
+**Golden set chuẩn:** `eval/golden_set.json` (`dataset_id: d3-teach-back-risk-taxonomy-v1.1`, version 1.1) — 30 case, phân bố 7/7/8/8 case cho L1-L4, có `acceptable_*` cho case biên hợp lệ nhiều đáp án, có case chỉ chấm `hard_constraints` (không có `expected_status`), 1 case regression guard chống lỗi thật từng xảy ra với OpenAI (GS1-019), và 1 case regression trong-phiên (GS1-025, đã covered K1-K4 nhưng lượt sau phát biểu sai phải thu hồi). File này gộp thay cho `golden_set_v1.json` (v1.0, CP4) và `golden_set_v1_1.json` (v1.1, sửa mâu thuẫn GS1-029 và khóa nghĩa evidence: `grounded_claims` chứng minh claim learner; `evidence_source_ids`/`source_cards` phục vụ phản hồi hoặc target gap) — cả hai đã bị xoá khỏi repo ngày 17/09, nội dung `golden_set.json` hiện tại chính là nội dung v1.1.
 
-> ⚠️ **Tự khai báo — trùng tên khoá, khác định nghĩa:** `golden_set_v1.json` dùng lại đúng 4 tên khoá `L1_INPUT/L2_SEMANTIC/L3_GROUNDING/L4_DIALOGUE` như bộ cũ `eval/golden_set.json` (20 case, không còn dùng làm chuẩn từ CP4) nhưng **định nghĩa lại hoàn toàn khác** — file tự ghi rõ điều này ở `relationship_to_existing_sets`. Đọc đúng `taxonomy` trong `golden_set_v1.json`, không suy ra nghĩa từ `eval/README.md` (tài liệu cũ, mô tả bộ 20-case).
+> ⚠️ **Tự khai báo — đã xoá bộ K1-K4 cũ:** Trước đây có một `eval/golden_set.json` khác (20/28-case, taxonomy nghĩa khác hẳn: chất lượng đầu vào / mức bao phủ K1-K4 / đúng nguồn grounding / điều phối hội thoại) dùng cho `codebase/run_eval.py`. Cả bộ dữ liệu này và `run_eval.py` đã bị xoá khỏi repo ngày 17/09 vì không còn dataset schema tương thích để chạy tiếp; số liệu lịch sử của nó vẫn được giữ ở `eval/run_results_openai_v1.md` (xem cuối mục này).
 
 **Quy trình chấm** *(theo `grading_protocol` trong chính file dataset)*:
 1. So khớp từng field `expected_*`/`acceptable_*` với output thực tế.
@@ -239,7 +239,7 @@ pass_rate = (số case đạt đủ điều kiện ở bước 3 quy trình ch�
   VÀ 2 người chấm hard_constraints đồng thuận ≥80%
 ```
 
-**Kết quả lượt chạy chuẩn (golden_set_v1.json)**
+**Kết quả lượt chạy chuẩn (golden_set.json)**
 
 | Provider | Đạt tự động | Theo lớp | Ghi chú |
 |---|---:|---|---|
@@ -254,7 +254,22 @@ pass_rate = (số case đạt đủ điều kiện ở bước 3 quy trình ch�
 >   - **Bộ phân loại "ngoài phạm vi" bị qua mặt bởi từ khoá domain** (5 case: GS1-003, GS1-007, GS1-016, GS1-021, GS1-022): câu hỏi so sánh model, prompt injection đòi đổi vai trò, câu hỏi triết học, nhờ sửa code — đều bị agent xử lý như câu trả lời K1-K4 bình thường thay vì `OUT_OF_SCOPE`, vì chứa từ khoá quen thuộc ("model", "AI", "code"...). Case đối chứng GS1-019 (không có từ khoá domain) lại được phân loại đúng — xác nhận đây là lỗi cấu trúc trong `looks_out_of_scope()`, không phải nhiễu.
 > - Việc sửa 2 lỗi trên là backlog kỹ thuật sau CP4, không làm thay đổi công thức Quality Bar đã đóng băng.
 
-**Bộ 20-case cũ** (`eval/golden_set.json`, taxonomy nghĩa khác — xem cảnh báo ở trên) không còn là chuẩn tính Quality Bar từ CP4, nhưng vẫn giữ trong repo làm lịch sử đối chiếu: OpenAI 10/20 (50%, `eval/run_results_openai_v1.md`), Offline rules 20/20 (100%, chỉ xác minh harness).
+**Kết quả kỹ thuật CP5 (chưa phải điểm Quality Bar chính thức):** runner v1.1 trên đúng
+pipeline web tăng từ 2/30 → 11/30 → 18/30 → 20/30 → 28/30 → 29/30 → **30/30
+auto-check** sau các vòng sửa intent/state/grounding. Run cuối:
+`eval/runs/20260917T150540Z_offline_web_1_1_summary.json`. Đây vẫn là baseline offline;
+chưa được thay cho kết quả OpenAI thật và chưa hoàn tất chấm tay `hard_constraints` bởi
+hai người, nên không dùng con số này để tuyên bố đã đạt Quality Bar CP4.
+
+Từ lượt cải tiến CP5 tiếp theo, `run_eval_risk.py` **chỉ chấp nhận OpenAI online**,
+yêu cầu `OPENAI_API_KEY` và không tự fallback sang luật offline. Các run offline nói
+trên được giữ nguyên để audit quá trình cải tiến, không phải kết quả được phép công bố.
+
+**Bộ 20/28-case K1-K4 cũ và `run_eval.py` đã bị xoá khỏi repo ngày 17/09** (không còn
+là chuẩn tính Quality Bar từ CP4, và schema của nó — `taxonomy_layer`, response_contract
+riêng — không tương thích với `golden_set.json` risk-taxonomy hiện tại). Số liệu lịch sử
+vẫn giữ nguyên làm bằng chứng đối chiếu: OpenAI 10/20 (50%, `eval/run_results_openai_v1.md`),
+Offline rules 20/20 (100%, chỉ xác minh harness).
 
 ---
 
@@ -265,7 +280,7 @@ pass_rate = (số case đạt đủ điều kiện ở bước 3 quy trình ch�
 |---|---|---|
 | Spec (spec.md, quality bar) | *(Mai Phan Anh Tùng)* | Đọc lại spec chéo giữa các thành viên trước 20:30, đối chiếu số liệu §1-§2 với evidence thật |
 | Evidence (§1-§2, JTBD, số liệu) | *(Vũ Quốc Bảo)* | Phỏng vấn/khảo sát nhóm target, ghi log nguyên văn |
-| Prompt / rubric knowledge | *(Nguyễn Vũ Quang Anh)* | Chạy lại `run_eval_risk.py --provider openai` trên `golden_set_v1.json`, đối chiếu §7 |
+| Prompt / rubric knowledge | *(Nguyễn Vũ Quang Anh)* | Chạy lại `run_eval_risk.py --provider openai` trên `golden_set.json`, đối chiếu §7 |
 | Code (backend, agent_core, server) | *(Nguyễn Vũ Quang Anh,Mai Phan Anh Tùng)* | Chạy `python -m unittest discover -s codebase/tests -v` trước khi commit |
 | Demo / pitch | *(Vũ Quốc Bảo, Nguyễn Vũ Quang Anh)* | Diễn tập demo end-to-end trên UI thật (`server.py --port 8000`) trước giờ pitch |
 
@@ -282,3 +297,8 @@ pass_rate = (số case đạt đủ điều kiện ở bước 3 quy trình ch�
 | 17/09 | Bắt buộc evidence cho misconception; thêm semantic guard K1-K4 | V1 sai ở D3-002, 003, 005, 007, 008, 019, 020 |
 | 17/09 | Tách out-of-scope và insufficient; thêm copy detector | V1 sai ở D3-016, 017, 018 |
 | 17/09 | Thêm multi-turn transfer pass và regression | Golden v1.0 chưa kiểm tra điều kiện hoàn thành phiên |
+| 17/09 | Chuẩn hóa 8 intent, tách lượt điều khiển hội thoại khỏi chấm mastery | GS1-001/009/010 và GS1-003/007/016/021/022 bị phân loại sai khi câu có từ khóa AI/model/code |
+| 17/09 | Lưu escalation theo từng gap: Socratic → thu hẹp → controlled hint → recovery | Feedback CP5: learner sai/không biết lặp lại không nên nhận đáp án đầy đủ quá sớm |
+| 17/09 | Thêm `golden_set_v1_1.json`, sửa GS1-029 và nghĩa evidence; runner lưu đủ 5 artifact mỗi run | Nhãn GS1-029 tự mâu thuẫn và log cũ bị ghi đè/khó so sánh giữa các phiên |
+| 17/09 | Khóa cả hai runner Golden set ở OpenAI online; thiếu key thì dừng trước khi tạo artifact | Không để kết quả luật offline bị nhầm thành năng lực thật của model trong CP5 |
+| 17/09 | Gộp 3 golden set (K1-K4 cũ, v1.0, v1.1) thành một `eval/golden_set.json` duy nhất (nội dung = v1.1); xoá `codebase/run_eval.py` vì mất dataset schema tương thích | Ba file cùng tên nhưng khác schema/nghĩa gây nhầm lẫn khi chạy eval; muốn chỉ còn một golden set nhất quán cho toàn bộ runner |

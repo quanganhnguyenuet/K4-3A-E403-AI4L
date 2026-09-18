@@ -125,11 +125,9 @@ set -a && source codebase/.env && set +a
 ### Chạy golden set (20 case)
 
 ```powershell
-# Baseline không gọi AI, không cần key
-.\.venv\Scripts\python.exe codebase\run_eval.py --provider offline
-
-# Lượt AI thật
-.\.venv\Scripts\python.exe codebase\run_eval.py --provider openai
+$env:OPENAI_API_KEY="..."
+$env:OPENAI_MODEL="gpt-5-mini"
+.\.venv\Scripts\python.exe codebase\run_eval.py
 ```
 Kết quả ghi vào `eval/run_results.md` + `eval/results.jsonl`.
 
@@ -156,7 +154,8 @@ POST /api/teach
 ## Đã verify
 
 - 10/10 unit test (`tests/test_agent.py`) — không đổi hành vi.
-- 20/20 golden set với `--provider offline`.
+- Các lượt offline trước đây chỉ là kiểm tra migration và được giữ như lịch sử; runner
+  hiện tại bắt buộc OpenAI, không dùng kết quả offline làm điểm chất lượng.
 - 20/20 golden set với `--provider openai` (trước khi thêm `rubric_excerpt`
   cho câu hỏi); sau khi thêm `rubric_excerpt`, một lượt chạy lại cho 18/20 —
   2 ca lệch chỉ ở `covered_points` do model tự đánh giá thêm 1 K-point ngoài
@@ -282,7 +281,7 @@ bạn hoặc leader nhóm chủ động thực hiện.
 |---|---|
 | Module quyết định trung tâm gọi AI thật, không gán cứng | `codebase/agent_core.py` → `OpenAIResponsesProvider` gọi thật OpenAI Responses API qua `urllib`; đã verify sống bằng API key thật (golden set 20/20 rồi 18/20 tuỳ lượt chạy — xem mục "Đã verify" ở trên). |
 | Logging prompt + raw response của model | `AuditLogger` ghi `model_prompt`/`model_raw_response` vào `codebase/logs/model_calls.jsonl` (bị gitignore — cần đính kèm log mẫu khi nộp nếu ban tổ chức muốn xem bằng chứng kỹ thuật, vì thư mục này không lên repo công khai). |
-| `eval/golden_set.json` đủ 20 ca, có script chạy hàng loạt | `codebase/run_eval.py --provider openai/offline`, output `eval/results.jsonl` + `eval/run_results.md`. |
+| `eval/golden_set.json` đủ 20 ca, có script chạy hàng loạt | `codebase/run_eval.py` bắt buộc OpenAI online, output `eval/results.jsonl` + `eval/run_results.md`. |
 | `eval/run_results.md` có bảng đạt/không đạt/tỷ lệ % | Có, kèm bảng theo taxonomy và bảng chi tiết 20 ca. |
 | Giữ dấu vết lượt chạy đầu tiên, không "làm đẹp" số liệu | `eval/run_results_openai_v1.md` giữ nguyên kết quả thật đầu tiên **10/20 (50%)**, không bị ghi đè bởi các lượt sau — đúng tinh thần CP3: "kết quả 12/20 nhưng phân tích sâu vẫn nhận trọn điểm". |
 
